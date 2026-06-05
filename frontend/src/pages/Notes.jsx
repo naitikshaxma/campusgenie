@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Search, LayoutGrid, List, FileText } from 'lucide-react'
 import NoteCard from '@/components/notes/NoteCard'
@@ -14,6 +14,7 @@ const SUBJECTS = ['All', 'Mathematics', 'Physics', 'Chemistry', 'English', 'Hist
 
 export default function Notes() {
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeSubj, setActiveSubj] = useState('All')
   const [view, setView] = useState('grid')
   const [editorOpen, setEditorOpen] = useState(false)
@@ -21,15 +22,23 @@ export default function Notes() {
 
   const { notes, isLoading, add, update, remove } = useNotes(activeSubj)
 
+  // Debouncing Notes Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [search])
+
   /* Filtered notes by search query */
   const filtered = useMemo(() => {
     return notes.filter((n) => {
       return (
-        n.title.toLowerCase().includes(search.toLowerCase()) ||
-        n.content.toLowerCase().includes(search.toLowerCase())
+        n.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        n.content.toLowerCase().includes(debouncedSearch.toLowerCase())
       )
     })
-  }, [notes, search])
+  }, [notes, debouncedSearch])
 
   const handleSave = async (noteData) => {
     if (editNote) {
@@ -70,18 +79,18 @@ export default function Notes() {
             placeholder="Search notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 bg-secondary/20 border-border/50 focus:border-brand-500/50"
           />
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center rounded-lg border border-border p-1 gap-1">
+        <div className="flex items-center rounded-lg border border-border/60 p-1 gap-1 bg-card/45 backdrop-blur-sm">
           <button
             onClick={() => setView('grid')}
             className={cn(
               'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
               view === 'grid'
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-brand-500 text-white shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -92,7 +101,7 @@ export default function Notes() {
             className={cn(
               'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
               view === 'list'
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-brand-500 text-white shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -100,23 +109,23 @@ export default function Notes() {
           </button>
         </div>
 
-        <Button variant="gradient" onClick={openNew}>
-          <Plus className="h-4 w-4" />
+        <Button variant="gradient" onClick={openNew} className="hidden md:flex">
+          <Plus className="h-4 w-4 mr-1.5" />
           New Note
         </Button>
       </div>
 
       {/* ── Subject filter tabs ──────────────────────────────── */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap bg-card/45 p-2 rounded-xl border border-border/50 backdrop-blur-md">
         {SUBJECTS.map((subj) => (
           <button
             key={subj}
             onClick={() => setActiveSubj(subj)}
             className={cn(
-              'text-xs px-3 py-1.5 rounded-full border transition-all duration-200 font-medium',
+              'text-xs px-3.5 py-1.5 rounded-full border transition-all duration-200 font-semibold',
               activeSubj === subj
                 ? 'gradient-bg-primary text-white border-transparent shadow-md'
-                : 'border-border text-muted-foreground hover:border-brand-500/40 hover:text-foreground'
+                : 'border-border/60 text-muted-foreground hover:border-brand-500/40 hover:text-foreground hover:bg-secondary/35'
             )}
           >
             {subj}
@@ -126,10 +135,10 @@ export default function Notes() {
 
       {/* ── Notes count / loading indicator ──────────────────── */}
       {!isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground px-1">
           <FileText className="h-4 w-4" />
           <span>
-            {filtered.length} note{filtered.length !== 1 ? 's' : ''}
+            {filtered.length} note{filtered.length !== 1 ? 's' : ''} found
           </span>
         </div>
       )}
@@ -140,16 +149,17 @@ export default function Notes() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={search ? 'No notes found' : 'No notes created'}
+          title={search ? 'No notes found' : 'No notes yet'}
           description={
             search
               ? 'Try searching for something else.'
-              : 'Create your first smart note to kickstart your deep focus study sessions!'
+              : 'Create a note or scan a lecture to kickstart your deep focus study sessions.'
           }
           action={{
-            label: 'Create note',
-            icon: Plus,
-            onClick: openNew,
+            label: search ? 'Clear Search' : 'Create note',
+            icon: search ? null : Plus,
+            onClick: search ? () => setSearch('') : openNew,
+            variant: search ? 'outline' : 'default'
           }}
         />
       ) : (
@@ -157,11 +167,11 @@ export default function Notes() {
           layout
           className={cn(
             view === 'grid'
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
+              ? 'columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4 [column-fill:_balance]'
               : 'flex flex-col gap-3'
           )}
         >
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {filtered.map((note, i) => (
               <motion.div
                 key={note.id}
@@ -170,8 +180,9 @@ export default function Notes() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3, delay: i * 0.04 }}
+                className={cn(view === 'grid' && 'break-inside-avoid mb-4')}
               >
-                <NoteCard note={note} view={view} onClick={() => openEdit(note)} />
+                <NoteCard note={note} search={search} view={view} onClick={() => openEdit(note)} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -191,6 +202,14 @@ export default function Notes() {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Mobile Floating Action Button (FAB) ── */}
+      <button
+        onClick={openNew}
+        className="md:hidden fixed bottom-24 right-6 h-14 w-14 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-full flex items-center justify-center text-white shadow-[0_4px_20px_rgba(139,92,246,0.5)] z-40 active:scale-95 transition-transform"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   )
 }

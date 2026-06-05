@@ -55,8 +55,10 @@ export default function EmptyState({
           onClick={action.onClick}
           className={cn(
             'mt-5 inline-flex items-center gap-2 rounded-xl px-5 py-2.5',
-            'gradient-bg-primary text-white text-sm font-semibold shadow-lg',
-            'hover:opacity-90 transition-opacity',
+            'text-sm font-semibold shadow-sm transition-all',
+            action.variant === 'outline' 
+              ? 'border border-border/60 hover:bg-accent text-foreground'
+              : 'gradient-bg-primary text-white shadow-[0_8px_20px_-4px_rgba(139,92,246,0.4)] hover:opacity-90',
           )}
         >
           {action.icon && <action.icon className="h-4 w-4" />}

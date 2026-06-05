@@ -80,5 +80,6 @@ plannerSessionSchema.set('toObject', { transform: stripPrivate })
 
 // Compound index for optimal calendar queries and dashboard listings
 plannerSessionSchema.index({ createdBy: 1, date: 1 })
+plannerSessionSchema.index({ createdBy: 1, date: 1, startTime: 1 })
 
 module.exports = mongoose.model('PlannerSession', plannerSessionSchema)

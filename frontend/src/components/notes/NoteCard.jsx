@@ -2,7 +2,80 @@ import { motion } from 'framer-motion'
 import { FileText, Clock, Tag } from 'lucide-react'
 import { cn, truncate, timeAgo, getSubjectColor } from '@/lib/utils'
 
-export default function NoteCard({ note, onClick, view = 'grid' }) {
+function highlightText(text, search) {
+  if (!search || !text) return text
+  const parts = text.split(new RegExp(`(${search})`, 'gi'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === search.toLowerCase() ? (
+      <mark key={i} className="bg-brand-500/35 text-brand-200 rounded px-0.5 font-semibold decoration-none">{part}</mark>
+    ) : (
+      part
+    )
+  )
+}
+
+function renderMarkdownPreview(content, search) {
+  if (!content) return ''
+  
+  // Truncate content for card preview
+  let text = content.slice(0, 140)
+  if (content.length > 140) text += '...'
+
+  const lines = text.split('\n')
+  return (
+    <div className="space-y-1 mt-2 text-xs text-muted-foreground leading-relaxed">
+      {lines.slice(0, 3).map((line, idx) => {
+        const trimmed = line.trim()
+        if (!trimmed) return null
+
+        // Lists
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          return (
+            <div key={idx} className="flex items-center gap-1.5 ml-1 my-0.5">
+              <span className="h-1 w-1 rounded-full bg-brand-400 shrink-0" />
+              <span className="truncate">{highlightText(trimmed.substring(2), search)}</span>
+            </div>
+          )
+        }
+
+        // Headers
+        if (trimmed.startsWith('#')) {
+          const cleanH = trimmed.replace(/^#+\s*/, '')
+          return (
+            <span key={idx} className="block font-bold text-foreground mt-1.5 mb-0.5">
+              {highlightText(cleanH, search)}
+            </span>
+          )
+        }
+
+        // Handle inline bold formatting
+        let element = trimmed
+        if (element.includes('**')) {
+          const boldParts = element.split(/\*\*(.*?)\*\*/g)
+          return (
+            <span key={idx} className="block">
+              {boldParts.map((part, i) => 
+                i % 2 === 1 ? (
+                  <strong key={i} className="font-bold text-foreground/90">{highlightText(part, search)}</strong>
+                ) : (
+                  highlightText(part, search)
+                )
+              )}
+            </span>
+          )
+        }
+
+        return (
+          <span key={idx} className="block truncate">
+            {highlightText(trimmed, search)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function NoteCard({ note, onClick, search = '', view = 'grid' }) {
   const subjectColor = getSubjectColor(note.subject)
 
   return (
@@ -33,13 +106,11 @@ export default function NoteCard({ note, onClick, view = 'grid' }) {
 
           {/* Title */}
           <h3 className="text-sm font-semibold leading-snug group-hover:text-brand-400 transition-colors line-clamp-2">
-            {note.title}
+            {highlightText(note.title, search)}
           </h3>
 
-          {/* Preview */}
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">
-            {truncate(note.content, 120)}
-          </p>
+          {/* Preview Markdown & Highlights */}
+          {renderMarkdownPreview(note.content, search)}
 
           {/* Footer */}
           <div className="flex items-center justify-between mt-4">
@@ -50,7 +121,7 @@ export default function NoteCard({ note, onClick, view = 'grid' }) {
               <Tag className="h-2.5 w-2.5" />
               {note.subject}
             </span>
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
               <Clock className="h-2.5 w-2.5" />
               {timeAgo(note.updatedAt)}
             </span>
@@ -62,17 +133,19 @@ export default function NoteCard({ note, onClick, view = 'grid' }) {
           <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', subjectColor.bg)}>
             <FileText className={cn('h-4 w-4', subjectColor.text)} />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <h3 className="text-sm font-semibold truncate group-hover:text-brand-400 transition-colors">
-              {note.title}
+              {highlightText(note.title, search)}
             </h3>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{truncate(note.content, 80)}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
+              {truncate(note.content, 80)}
+            </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full border', subjectColor.bg, subjectColor.text, subjectColor.border)}>
               {note.subject}
             </span>
-            <span className="text-[10px] text-muted-foreground hidden sm:block">{timeAgo(note.updatedAt)}</span>
+            <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">{timeAgo(note.updatedAt)}</span>
           </div>
         </>
       )}

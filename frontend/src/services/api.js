@@ -51,7 +51,7 @@ api.interceptors.response.use(
       window.location.href = '/login'
     }
     return Promise.reject(
-      error.response?.data?.message || error.message || 'Something went wrong',
+      new Error(error.response?.data?.message || error.message || 'Something went wrong'),
     )
   },
 )

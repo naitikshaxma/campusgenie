@@ -64,5 +64,9 @@ assignmentSchema.set('toObject', { transform: stripPrivate })
 
 // Compound index for optimal dashboard deadlines and listing queries
 assignmentSchema.index({ createdBy: 1, dueDate: 1 })
+// Compound index for optimal Kanban board status filters
+assignmentSchema.index({ createdBy: 1, status: 1 })
+// Compound index for priority-deadline ordering
+assignmentSchema.index({ createdBy: 1, dueDate: 1, priority: 1 })
 
 module.exports = mongoose.model('Assignment', assignmentSchema)

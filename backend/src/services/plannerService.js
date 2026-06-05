@@ -160,56 +160,10 @@ async function getStreak(userId) {
   return { streak }
 }
 
+const plannerAiService = require('./plannerAiService')
+
 async function generateStudyPlan(userId, payload) {
-  const subject = payload.subject || 'General'
-  const assignmentTitle = payload.assignmentTitle || ''
-  const topic = assignmentTitle || payload.topic || subject
-  const difficulty = payload.difficulty || 'medium'
-  const deadline = payload.deadline ? new Date(payload.deadline) : null
-  const availablePerDay = parseNumber(payload.availableHours) || 2
-  const linkedAssignment = payload.linkedAssignment || null
-  const baseHours = getDifficultyBaseHours(difficulty)
-
-  const startDate = getDateOnly(new Date())
-  const endDate = deadline ? getDateOnly(deadline) : new Date(startDate.getTime() + 7 * 86400000)
-  const totalDays = Math.max(1, Math.ceil((endDate - startDate) / 86400000) + 1)
-
-  const totalAvailable = roundToHalf(availablePerDay * totalDays)
-  const targetHours = Math.max(1, Math.min(totalAvailable, baseHours + totalDays * 0.5))
-
-  const sessions = []
-  let remaining = roundToHalf(targetHours)
-
-  for (let i = 0; i < totalDays; i += 1) {
-    if (remaining < 0.5) break
-    const dayDate = new Date(startDate)
-    dayDate.setDate(startDate.getDate() + i)
-
-    const remainingDays = totalDays - i
-    const suggested = roundToHalf(remaining / remainingDays)
-    const dayHours = Math.min(availablePerDay, suggested)
-
-    sessions.push(
-      ...buildSessionsForDay({
-        dayDate,
-        dayHours,
-        subject,
-        topic,
-        linkedAssignment,
-        notes: assignmentTitle
-          ? `Plan for ${assignmentTitle}`
-          : `Plan for ${subject}`,
-      })
-    )
-
-    remaining = roundToHalf(remaining - dayHours)
-  }
-
-  const created = await PlannerSession.insertMany(
-    sessions.map((session) => ({ ...session, createdBy: userId }))
-  )
-
-  return created
+  return plannerAiService.generateAdvancedPlan(userId, payload)
 }
 
 module.exports = {

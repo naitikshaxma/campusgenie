@@ -13,10 +13,12 @@ const noteRoutes = require('./routes/noteRoutes')
 const plannerRoutes = require('./routes/plannerRoutes')
 const chatRoutes = require('./routes/chatRoutes')
 const ocrRoutes = require('./routes/ocrRoutes')
+const timingMiddleware = require('./middleware/timingMiddleware')
 
 const app = express()
 
 // ── Production-grade Security & Performance Middleware ──
+app.use(timingMiddleware)
 app.use(helmet())
 app.use(mongoSanitize())
 app.use(compression())

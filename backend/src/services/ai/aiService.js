@@ -37,7 +37,7 @@ class AiService {
         prompt,
         systemInstructions.assignmentExtraction
       )
-
+ 
       // Validate schema compliance and provide defaults if missing
       const stabilized = {
         title: data.title || 'Untitled Assignment',
@@ -48,9 +48,12 @@ class AiService {
         priority: ['low', 'medium', 'high'].includes(String(data.priority).toLowerCase())
           ? String(data.priority).toLowerCase()
           : 'medium',
-        description: data.description || ''
+        description: data.description || '',
+        estimatedStudyHours: Number(data.estimatedStudyHours) || (data.priority === 'high' ? 4.5 : data.priority === 'medium' ? 2.5 : 1.0),
+        confidence: Number(data.confidence) || 0.88,
+        aiGenerated: true
       }
-
+ 
       return stabilized
     } catch (err) {
       console.error('[AiService] extractAssignmentData error:', err.message)
@@ -150,7 +153,10 @@ class AiService {
           : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
         priority: ['low', 'medium', 'high'].includes(String(data.priority).toLowerCase())
           ? String(data.priority).toLowerCase()
-          : 'medium'
+          : 'medium',
+        estimatedStudyHours: Number(data.estimatedStudyHours) || (data.priority === 'high' ? 4.5 : data.priority === 'medium' ? 2.5 : 1.0),
+        confidence: Number(data.confidence) || 0.88,
+        aiGenerated: true
       }
 
       return stabilized
@@ -189,6 +195,46 @@ class AiService {
     } catch (err) {
       console.error('[AiService] extractNoticeFromImage error:', err.message)
       throw new Error('Failed to extract notice details from flyer: ' + err.message)
+    }
+  }
+
+  /**
+   * AI Enrichment — called AFTER regex parsing.
+   * Gemini ONLY estimates workload, difficulty, summary, and study recommendations.
+   * It MUST NOT output title, subject, dueDate, or priority.
+   *
+   * @param {string} rawText - Raw OCR transcription
+   * @param {Object} parsedFields - Regex-parsed fields (title, subject, dueDate)
+   */
+  async enrichAssignmentWithAi(rawText, parsedFields = {}) {
+    try {
+      const prompt = templates.aiEnrichment({
+        rawText,
+        parsedTitle: parsedFields.title,
+        parsedSubject: parsedFields.subject,
+        parsedDueDate: parsedFields.dueDate,
+      })
+
+      const data = await geminiProvider.generateJson(prompt, systemInstructions.aiEnrichment)
+
+      // Only pick the four safe enrichment fields — never subject/title/date/priority
+      return {
+        estimatedStudyHours: Number(data.estimatedStudyHours) || 2.5,
+        studySuggestions: data.studyRecommendation || data.studySuggestions || 'Review class notes and practice past problems.',
+        difficulty: ['easy', 'medium', 'hard'].includes(String(data.difficulty).toLowerCase())
+          ? String(data.difficulty).toLowerCase()
+          : 'medium',
+        summary: data.summary || '',
+      }
+    } catch (err) {
+      console.error('[AiService] enrichAssignmentWithAi error:', err.message)
+      // Safe fallback — never propagate errors to caller; ocrService handles gracefully
+      return {
+        estimatedStudyHours: 2.5,
+        studySuggestions: 'Review textbook concepts and outline key goals before starting.',
+        difficulty: 'medium',
+        summary: '',
+      }
     }
   }
 

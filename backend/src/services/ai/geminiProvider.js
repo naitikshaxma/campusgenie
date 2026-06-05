@@ -40,6 +40,30 @@ class GeminiProvider {
   }
 
   /**
+   * Helper to retry transient Google Gemini capacity/rate limit errors with exponential backoff.
+   */
+  async retryCall(fn, retries = 3, delay = 1000) {
+    try {
+      return await fn()
+    } catch (err) {
+      const isTransient = 
+        err.message.includes('503') || 
+        err.message.includes('demand') || 
+        err.message.includes('429') || 
+        err.message.includes('quota') || 
+        err.message.includes('timeout') ||
+        err.message.includes('Service Unavailable')
+      
+      if (isTransient && retries > 0) {
+        console.warn(`[GeminiProvider] Transient error: ${err.message}. Retrying in ${delay}ms... (${retries} retries left)`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return this.retryCall(fn, retries - 1, delay * 1.5)
+      }
+      throw err
+    }
+  }
+
+  /**
    * Generates a plain-text response from the LLM.
    * @param {string} prompt - User query or input prompt
    * @param {string} systemInstruction - Developer context or guidelines
@@ -53,7 +77,7 @@ class GeminiProvider {
         systemInstruction,
       })
 
-      const result = await this.withTimeout(model.generateContent(prompt))
+      const result = await this.retryCall(() => this.withTimeout(model.generateContent(prompt)))
       const text = result.response.text()
       if (!text) {
         throw new Error('Gemini API returned an empty text response.')
@@ -83,7 +107,7 @@ class GeminiProvider {
         }
       })
 
-      const result = await this.withTimeout(model.generateContent(prompt))
+      const result = await this.retryCall(() => this.withTimeout(model.generateContent(prompt)))
       const text = result.response.text()
       
       if (!text) {
@@ -143,7 +167,7 @@ class GeminiProvider {
         }
       }
 
-      const result = await this.withTimeout(model.generateContent([prompt, imagePart]))
+      const result = await this.retryCall(() => this.withTimeout(model.generateContent([prompt, imagePart])))
       const text = result.response.text()
       
       if (!text) {

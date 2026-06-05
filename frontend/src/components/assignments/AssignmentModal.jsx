@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { CalendarDays, BookOpen, AlertCircle, FileText } from 'lucide-react'
 import {
@@ -20,6 +20,13 @@ const EMPTY = {
 
 export default function AssignmentModal({ open, onOpenChange, onSave, initial }) {
   const [form, setForm] = useState(initial || EMPTY)
+
+  // Synchronize modal state on initial change or open toggle
+  useEffect(() => {
+    if (open) {
+      setForm(initial || EMPTY)
+    }
+  }, [open, initial])
 
   const handleChange = (field, value) => setForm((p) => ({ ...p, [field]: value }))
 

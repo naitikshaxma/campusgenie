@@ -68,43 +68,60 @@ export default function Sidebar({ isOpen, onClose }) {
       >
         {/* Brand header */}
         <div className={cn(
-          'flex items-center gap-3 px-4 h-16 border-b border-border/60',
-          collapsed && 'justify-center px-2',
+          'flex flex-col justify-center gap-1.5 px-4 h-16 border-b border-border/60',
+          collapsed && 'items-center justify-center px-2',
         )}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-bg-primary shadow-lg">
-            <GraduationCap className="h-4 w-4 text-white" />
-          </div>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.2 }}
-                className="font-display font-bold text-base tracking-tight gradient-text-brand"
-              >
-                CampusGenie
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg gradient-bg-primary shadow-lg relative">
+              <GraduationCap className="h-4 w-4 text-white" />
+              {/* Glowing AI pulse indicator */}
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+            </div>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col min-w-0"
+                >
+                  <span className="font-display font-black text-sm tracking-tight gradient-text-brand leading-none">
+                    CampusGenie
+                  </span>
+                  <span className="text-[9px] font-medium text-muted-foreground tracking-tight mt-0.5 truncate uppercase">
+                    AI Student Workspace
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          {/* Collapse toggle (desktop only) */}
-          <button
-            onClick={() => setCollapsed((p) => !p)}
-            className={cn(
-              'hidden md:flex ml-auto h-6 w-6 items-center justify-center rounded-md',
-              'text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+            {/* Collapse toggle (desktop only) */}
+            {!collapsed && (
+              <button
+                onClick={() => setCollapsed(true)}
+                className="hidden md:flex ml-auto h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
             )}
-          >
-            <motion.div animate={{ rotate: collapsed ? 180 : 0 }} transition={{ duration: 0.3 }}>
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </motion.div>
-          </button>
+          </div>
+          {collapsed && (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="hidden md:flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors mt-1"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+            </button>
+          )}
         </div>
 
         {/* AI Quick Action */}
         <div className={cn('px-3 py-3', collapsed && 'px-2')}>
-          <NavLink to="/chat">
+          <NavLink to="/chat" onClick={onClose}>
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -123,7 +140,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-xs font-medium text-brand-400"
+                    className="text-xs font-semibold text-brand-400"
                   >
                     Ask AI anything…
                   </motion.span>
@@ -138,7 +155,7 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 no-scrollbar">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavItem key={to} to={to} label={label} Icon={Icon} collapsed={collapsed} />
+            <NavItem key={to} to={to} label={label} Icon={Icon} collapsed={collapsed} onClick={onClose} />
           ))}
         </nav>
 
@@ -160,7 +177,7 @@ export default function Sidebar({ isOpen, onClose }) {
           )}>
             <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={user?.avatar} />
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              <AvatarFallback className="text-xs font-bold">{initials}</AvatarFallback>
             </Avatar>
             <AnimatePresence>
               {!collapsed && (
@@ -170,8 +187,8 @@ export default function Sidebar({ isOpen, onClose }) {
                   exit={{ opacity: 0 }}
                   className="flex-1 min-w-0"
                 >
-                  <p className="text-xs font-semibold truncate">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.major}</p>
+                  <p className="text-xs font-semibold truncate text-foreground">{user?.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{user?.major}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -196,9 +213,9 @@ export default function Sidebar({ isOpen, onClose }) {
   )
 }
 
-function NavItem({ to, label, Icon, collapsed }) {
+function NavItem({ to, label, Icon, collapsed, onClick }) {
   return (
-    <NavLink to={to}>
+    <NavLink to={to} onClick={onClick}>
       {({ isActive }) => (
         <motion.div
           whileHover={{ x: 2 }}
@@ -207,7 +224,7 @@ function NavItem({ to, label, Icon, collapsed }) {
             'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 cursor-pointer',
             collapsed && 'justify-center px-2',
             isActive
-              ? 'bg-brand-500/15 text-brand-400 font-medium'
+              ? 'bg-brand-500/15 text-brand-400 font-semibold'
               : 'text-muted-foreground hover:text-foreground hover:bg-accent',
           )}
           title={collapsed ? label : undefined}

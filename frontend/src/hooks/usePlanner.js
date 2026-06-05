@@ -3,6 +3,7 @@ import {
   fetchSessions, createSession, updateSession,
   deleteSession, generateAiPlan, fetchStreakData,
 } from '@/services/planner.service'
+import { isDemoMode, DEMO_SESSIONS, DEMO_STUDENT } from '@/lib/demoData'
 
 export function usePlanner() {
   const [sessions,    setSessions]    = useState([])
@@ -13,6 +14,16 @@ export function usePlanner() {
 
   const load = useCallback(async () => {
     setIsLoading(true)
+
+    if (isDemoMode()) {
+      setTimeout(() => {
+        setSessions([...DEMO_SESSIONS])
+        setStreak(DEMO_STUDENT.streak)
+        setIsLoading(false)
+      }, 600)
+      return
+    }
+
     try {
       const [sessionsData, streakData] = await Promise.all([
         fetchSessions(),
@@ -68,9 +79,7 @@ export function usePlanner() {
     setIsGenerating(true)
     try {
       const plan = await generateAiPlan(params)
-      if (Array.isArray(plan)) {
-        setSessions((prev) => [...prev, ...plan])
-      }
+      // We do not auto-append to state here so the UI can orchestrate the cinematic reveal.
       return plan
     } catch (err) {
       if (import.meta.env.DEV) console.error('[usePlanner] Failed to generate study plan:', err)
@@ -80,5 +89,5 @@ export function usePlanner() {
     }
   }, [])
 
-  return { sessions, streak, isLoading, isGenerating, error, refetch: load, add, update, remove, generatePlan }
+  return { sessions, setSessions, streak, isLoading, isGenerating, error, refetch: load, add, update, remove, generatePlan }
 }

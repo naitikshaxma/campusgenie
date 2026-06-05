@@ -53,5 +53,7 @@ noteSchema.set('toObject', { transform: stripPrivate })
 
 // Index for optimal notes query filters
 noteSchema.index({ createdBy: 1, subject: 1 })
+// Index for sorting notes by last modified date
+noteSchema.index({ createdBy: 1, updatedAt: -1 })
 
 module.exports = mongoose.model('Note', noteSchema)

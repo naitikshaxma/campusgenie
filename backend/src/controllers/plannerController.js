@@ -71,19 +71,22 @@ exports.getStreak = async (req, res, next) => {
 
 exports.generateStudyPlan = async (req, res, next) => {
   try {
-    const { assignmentTitle, subject, deadline, difficulty, availableHours } = req.body || {}
+    const { assignmentTitle, subject, deadline, availableHours, topic } = req.body || {}
 
-    if (!assignmentTitle || !subject || !deadline || !availableHours) {
+    if (!topic && (!assignmentTitle || !subject || !deadline || !availableHours)) {
       return res.status(400).json({
         success: false,
-        message: 'assignmentTitle, subject, deadline, and availableHours are required.',
+        message: 'A study topic or assignment title, subject, deadline, and availableHours are required.',
       })
     }
 
-    const sessions = await plannerService.generateStudyPlan(req.user.id, req.body)
+    const { sessions, reasoning } = await plannerService.generateStudyPlan(req.user.id, req.body)
     return res.status(200).json({
       success: true,
-      data: sessions.map((s) => s.toJSON()),
+      data: {
+        sessions: sessions.map((s) => s.toJSON()),
+        reasoning
+      }
     })
   } catch (err) {
     return next(err)

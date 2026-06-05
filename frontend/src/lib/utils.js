@@ -76,11 +76,13 @@ export const PRIORITY_COLORS = {
  */
 export const SUBJECT_COLORS = {
   Mathematics: { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/20',   dot: 'bg-blue-500' },
-  Physics:     { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20', dot: 'bg-purple-500' },
-  Chemistry:   { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/20',  dot: 'bg-green-500' },
-  English:     { bg: 'bg-amber-500/10',  text: 'text-amber-400',  border: 'border-amber-500/20',  dot: 'bg-amber-500' },
+  Math:        { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/20',   dot: 'bg-blue-500' },
+  Physics:     { bg: 'bg-amber-500/10',  text: 'text-amber-400',  border: 'border-amber-500/20',  dot: 'bg-amber-500' },
+  Chemistry:   { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
+  English:     { bg: 'bg-pink-500/10',   text: 'text-pink-400',   border: 'border-pink-500/20',   dot: 'bg-pink-500' },
   History:     { bg: 'bg-rose-500/10',   text: 'text-rose-400',   border: 'border-rose-500/20',   dot: 'bg-rose-500' },
   CS:          { bg: 'bg-cyan-500/10',   text: 'text-cyan-400',   border: 'border-cyan-500/20',   dot: 'bg-cyan-500' },
+  DBMS:        { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20', dot: 'bg-purple-500' },
   Biology:     { bg: 'bg-teal-500/10',   text: 'text-teal-400',   border: 'border-teal-500/20',   dot: 'bg-teal-500' },
 }
 

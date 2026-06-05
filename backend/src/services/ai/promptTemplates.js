@@ -19,7 +19,9 @@ Return ONLY valid JSON complying with the following schema:
   "subject": "The academic course or subject name",
   "dueDate": "YYYY-MM-DD format (infer current year 2026 if not specified, default to 7 days from now if completely absent)",
   "priority": "low" | "medium" | "high" (based on explicit urgency or deadlines),
-  "description": "Elaborated details, problems, chapters, or page numbers mentioned in the text"
+  "description": "Elaborated details, problems, chapters, or page numbers mentioned in the text",
+  "estimatedStudyHours": 2.5, // estimate workload in hours (number only, e.g. 1.5, 4.0)
+  "confidence": 0.92 // estimated confidence score of OCR match (number between 0.0 and 1.0)
 }
 Output MUST be raw JSON only. Do not wrap in markdown blocks like \`\`\`json.`,
 
@@ -54,13 +56,34 @@ Return ONLY valid JSON complying with the following schema:
 Output MUST be raw JSON only.`,
 
   // Raw OCR transcription helper
-  textExtraction: `You are an OCR text transcriber.
-Your task is to transcribe all text visible in the attached image as raw text.
+  textExtraction: `You are a precise OCR text transcriber.
+Your ONLY task is to transcribe all text exactly as it appears in the attached image.
+Do NOT interpret, infer, summarize, or add any data not visible in the image.
+Preserve line breaks, labels, and layout structure.
 Return ONLY valid JSON complying with the following schema:
 {
   "rawText": "The entire transcribed text from the image, preserving line breaks and structure where appropriate"
 }
-Output MUST be raw JSON only.`
+Output MUST be raw JSON only. Do NOT wrap in markdown blocks.`,
+
+  // AI enrichment-only — NEVER generates subject, date, title, or priority
+  aiEnrichment: `You are an AI academic workload estimator.
+You will receive raw OCR text from an academic assignment notice, along with metadata already extracted by a deterministic regex parser.
+Your job is to ONLY estimate workload metrics and generate study guidance based on the content.
+
+STRICT RULES:
+- Do NOT generate or modify: title, subject, dueDate, priority — these are provided by regex and are FIXED.
+- ONLY output the four fields listed below.
+- If you cannot determine a value, use a sensible academic default.
+
+Return ONLY valid JSON with this exact schema:
+{
+  "estimatedStudyHours": 2.5,
+  "studyRecommendation": "Short, actionable study advice for this specific assignment (1-2 sentences)",
+  "difficulty": "easy" | "medium" | "hard",
+  "summary": "One-sentence summary of what the assignment requires based on the scanned text"
+}
+Output MUST be raw JSON only. Do NOT wrap in markdown blocks.`
 }
 
 exports.templates = {
@@ -102,5 +125,32 @@ ${text}
 
   assignmentExtractionImage: () => `Analyze the attached image and extract the structured assignment details.`,
   noticeExtractionImage: () => `Analyze the attached flyer image and extract the structured notice details.`,
-  textExtractionImage: () => `Transcribe all text from the attached image.`
+  textExtractionImage: () => `Transcribe ALL text exactly as visible in the attached image. Do not add, infer, or omit anything. Preserve all labels, headings, and values.`,
+
+  /**
+   * AI Enrichment template — passes raw OCR text + already-parsed regex metadata.
+   * Gemini should ONLY estimate workload, difficulty, and study guidance.
+   * It must NOT override title, subject, dueDate, or priority.
+   */
+  aiEnrichment: ({ rawText, parsedTitle, parsedSubject, parsedDueDate }) => `You are an AI academic workload estimator.
+
+The following fields have already been extracted DETERMINISTICALLY by a regex parser and are CORRECT — do NOT change them:
+- Title: ${parsedTitle || 'Not detected'}
+- Subject: ${parsedSubject || 'Not detected'}
+- Due Date: ${parsedDueDate || 'Not detected'}
+
+Based on the raw OCR text below, estimate the WORKLOAD only. Do NOT output title, subject, dueDate, or priority.
+
+RAW OCR TEXT:
+---
+${rawText}
+---
+
+Return ONLY valid JSON with this exact schema:
+{
+  "estimatedStudyHours": 2.5,
+  "studyRecommendation": "Specific, actionable study advice based on the content",
+  "difficulty": "easy" | "medium" | "hard",
+  "summary": "One-sentence summary of what this assignment requires"
+}`
 }
