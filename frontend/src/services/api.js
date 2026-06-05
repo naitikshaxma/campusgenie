@@ -6,7 +6,12 @@
 import axios from 'axios'
 
 // Strip trailing slash to prevent double-slash URLs
-const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+// VITE_API_URL from env → production hardcoded fallback → dev localhost
+const rawUrl =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? 'https://campusgenie.onrender.com/api'   // ← production Render backend
+    : 'http://localhost:8000/api')              // ← local dev
 const BASE_URL = rawUrl.replace(/\/+$/, '')
 
 const api = axios.create({
