@@ -38,7 +38,11 @@ app.use(cors({
     // Allow requests with no origin (curl, Render health checks, etc.)
     if (!origin) return callback(null, true)
     const normalized = origin.replace(/\/$/, '')
-    if (allowedOrigins.includes(normalized)) {
+    
+    // Dynamically match any vercel.app domain/subdomain
+    const isVercel = /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(normalized)
+
+    if (allowedOrigins.includes(normalized) || isVercel) {
       return callback(null, true)
     }
     console.warn('[CORS] Blocked origin:', origin)
