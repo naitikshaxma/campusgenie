@@ -1,132 +1,114 @@
-const Tesseract = require('tesseract.js')
+const { GoogleGenerativeAI } = require('@google/generative-ai')
+const { systemInstructions, templates } = require('./promptTemplates')
 
 class OcrProvider {
   constructor() {
-    this.ocrSpaceUrl = 'https://api.ocr.space/parse/image'
+    this.genAI = null
+    this.modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+  }
+
+  init() {
+    if (this.genAI) return
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey || apiKey === 'your_google_gemini_api_key_here') {
+      throw new Error('GEMINI_API_KEY is not configured.')
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey)
+  }
+
+  async withTimeout(promise, ms = 25000) {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Google Gemini Vision API request timed out after ${ms / 1000} seconds.`)), ms)
+    )
+    return Promise.race([promise, timeout])
+  }
+
+  async retryCall(fn, retries = 2, delay = 1500) {
+    try {
+      return await fn()
+    } catch (err) {
+      const isTransient =
+        err.message.includes('503') ||
+        err.message.includes('demand') ||
+        err.message.includes('429') ||
+        err.message.includes('quota') ||
+        err.message.includes('timeout') ||
+        err.message.toLowerCase().includes('rate limit') ||
+        err.message.includes('Service Unavailable')
+
+      if (isTransient && retries > 0) {
+        console.warn(`[OcrProvider] Gemini transient error: ${err.message}. Retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return this.retryCall(fn, retries - 1, delay * 2)
+      }
+      throw err
+    }
   }
 
   /**
-   * Transcribes all text from an image buffer using OCR.space (cloud) or Tesseract.js (local fallback).
+   * Transcribes all text from an image buffer using Google Gemini Vision (multimodal).
    */
   async extractText(buffer, mimeType) {
     if (!buffer || buffer.length === 0) {
       throw new Error('Invalid or empty image buffer.')
     }
-
-    try {
-      console.log('[OcrProvider] Attempting cloud text extraction via OCR.space...')
-      const text = await this.callOcrSpace(buffer, mimeType)
-      if (text && text.trim().length > 0) {
-        console.log('[OcrProvider] Cloud extraction successful!')
-        return text
-      }
-      throw new Error('OCR.space returned empty text.')
-    } catch (err) {
-      console.warn('[OcrProvider] OCR.space cloud extraction failed. Falling back to local Tesseract.js...', err.message)
-      
-      try {
-        const text = await this.callTesseract(buffer)
-        if (text && text.trim().length > 0) {
-          console.log('[OcrProvider] Local Tesseract.js extraction successful!')
-          return text
-        }
-        throw new Error('Tesseract.js returned empty text.')
-      } catch (tessErr) {
-        console.error('[OcrProvider] Local Tesseract.js failed:', tessErr.message)
-        throw new Error('Failed to transcribe image. Both OCR.space and Tesseract.js failed: ' + tessErr.message)
-      }
-    }
-  }
-
-  /**
-   * OCR.space API client
-   */
-  async callOcrSpace(buffer, mimeType) {
-    const apiKey = process.env.OCR_SPACE_API_KEY || 'helloworld'
     
-    // Construct base64 payload
+    this.init()
     const activeMime = mimeType || 'image/png'
-    const base64Str = buffer.toString('base64')
-    const dataUri = `data:${activeMime};base64,${base64Str}`
-    
-    const formData = new URLSearchParams()
-    formData.append('apikey', apiKey)
-    formData.append('base64Image', dataUri)
-    formData.append('language', 'eng')
-    formData.append('isOverlayRequired', 'false')
-
-    // Fetch call with timeout of 8s
-    const controller = new AbortController()
-    const id = setTimeout(() => controller.abort(), 8000)
 
     try {
-      const res = await fetch(this.ocrSpaceUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formData,
-        signal: controller.signal
+      console.log('[OcrProvider] Running text extraction via Google Gemini Vision...')
+      
+      const model = this.genAI.getGenerativeModel({
+        model: this.modelName,
+        systemInstruction: systemInstructions.textExtraction,
+        generationConfig: {
+          responseMimeType: 'application/json'
+        }
       })
-      
-      clearTimeout(id)
 
-      if (!res.ok) {
-        throw new Error(`OCR.space API error: Status ${res.status}`)
-      }
-
-      const data = await res.json()
-      
-      if (data.IsErroredOnProcessing) {
-        throw new Error(`OCR.space processing error: ${data.ErrorMessage?.[0] || 'Unknown'}`)
-      }
-
-      const parsedResults = data.ParsedResults
-      if (Array.isArray(parsedResults) && parsedResults[0]) {
-        return parsedResults[0].ParsedText || ''
-      }
-      return ''
-    } catch (err) {
-      clearTimeout(id)
-      throw err
-    }
-  }
-
-  /**
-   * Tesseract.js local client
-   */
-  async callTesseract(buffer) {
-    const path = require('path')
-    const langPath = path.resolve(__dirname, '../../..')
-    
-    // Create the worker with offline options pointing to local eng.traineddata
-    const worker = await Tesseract.createWorker('eng', 1, {
-      langPath,
-      gzip: false,
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          console.log(`[Tesseract] Progress: ${Math.round(m.progress * 100)}%`)
+      const imagePart = {
+        inlineData: {
+          data: buffer.toString('base64'),
+          mimeType: activeMime
         }
       }
-    })
 
-    try {
-      // Wrap the recognition in a timeout of 20 seconds
-      const ocrPromise = (async () => {
-        const { data: { text } } = await worker.recognize(buffer)
-        return text || ''
-      })()
+      const prompt = templates.textExtractionImage()
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tesseract local execution timed out (20s)')), 20000)
+      const result = await this.retryCall(() => 
+        this.withTimeout(model.generateContent([prompt, imagePart]))
       )
 
-      const result = await Promise.race([ocrPromise, timeoutPromise])
-      await worker.terminate()
-      return result
+      const text = result.response.text()
+      if (!text) {
+        throw new Error('Gemini Vision returned an empty response.')
+      }
+
+      // Parse JSON from Gemini response MimeType structure
+      let parsed = {}
+      try {
+        parsed = JSON.parse(text)
+      } catch (e) {
+        // Fallback JSON match regex
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0])
+        } else {
+          throw new Error('Failed to parse Gemini response as valid JSON: ' + text)
+        }
+      }
+
+      const rawText = parsed.rawText || ''
+      if (rawText.trim().length > 0) {
+        console.log('[OcrProvider] Google Gemini Vision extraction successful!')
+        return rawText
+      }
+
+      throw new Error('Gemini Vision returned empty rawText.')
     } catch (err) {
-      await worker.terminate().catch(() => {})
-      throw err
+      console.error('[OcrProvider] Gemini Vision extraction failed:', err.message)
+      throw new Error('Failed to transcribe image using Google Gemini Vision: ' + err.message)
     }
   }
 }

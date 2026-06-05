@@ -10,7 +10,7 @@ process.on('unhandledRejection', (reason, promise) => {
 require('dotenv').config()
 
 // Enforce environment validation on boot
-const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'OPENROUTER_API_KEY']
+const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY']
 requiredEnv.forEach((key) => {
   const val = process.env[key]
   if (!val || val.startsWith('your_') || val.includes('replace_with_') || val === '') {
