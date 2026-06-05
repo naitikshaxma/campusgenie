@@ -35,7 +35,7 @@ async function getMessages(userId, sessionId) {
 }
 
 /**
- * Send a user message and trigger the Gemini AI response.
+ * Send a user message and trigger the AI response.
  */
 async function sendMessage(userId, sessionId, content) {
   // 1. Verify session ownership
@@ -57,7 +57,7 @@ async function sendMessage(userId, sessionId, content) {
   // 3. Load all previous messages to construct conversational history
   const allMsgs = await ChatMessage.find({ sessionId, createdBy: userId }).sort({ createdAt: 1 })
   
-  // Format history before the current message for Gemini
+  // Format history before the current message for the AI
   const history = allMsgs
     .slice(0, -1) // exclude the message we just added
     .map((m) => ({
@@ -65,7 +65,7 @@ async function sendMessage(userId, sessionId, content) {
       content: m.content,
     }))
 
-  // 4. Request response from Gemini AI service
+  // 4. Request response from AI service
   const aiResponse = await aiService.generateChatResponse(content, history)
 
   // 5. Save assistant response

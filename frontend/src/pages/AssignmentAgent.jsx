@@ -48,7 +48,7 @@ export default function AssignmentAgent() {
     setStatus('processing')
     setOcrStep(0)
 
-    // Increment visual loading steps to simulate stages of Gemini parser
+    // Increment visual loading steps to simulate stages of AI parser
     const stepInterval = setInterval(() => {
       setOcrStep((prev) => (prev < 6 ? prev + 1 : prev))
     }, 600)

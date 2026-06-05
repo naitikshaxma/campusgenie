@@ -4,7 +4,7 @@ const PlannerSession = require('../models/PlannerSession')
 
 /**
  * Intelligent Academic Auto-Planner Service
- * Utilizes Google Gemini to solve scheduling constraints.
+ * Utilizes the AI provider to solve scheduling constraints.
  */
 class PlannerAiService {
   /**

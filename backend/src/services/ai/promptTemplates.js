@@ -1,6 +1,6 @@
 /**
  * CampusGenie AI System Instructions & Prompt Templates
- * Standardized system instructions and user message templates for Gemini.
+ * Standardized system instructions and user message templates for the AI assistant.
  */
 
 exports.systemInstructions = {
@@ -129,7 +129,7 @@ ${text}
 
   /**
    * AI Enrichment template — passes raw OCR text + already-parsed regex metadata.
-   * Gemini should ONLY estimate workload, difficulty, and study guidance.
+   * The AI assistant should ONLY estimate workload, difficulty, and study guidance.
    * It must NOT override title, subject, dueDate, or priority.
    */
   aiEnrichment: ({ rawText, parsedTitle, parsedSubject, parsedDueDate }) => `You are an AI academic workload estimator.

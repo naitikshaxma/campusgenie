@@ -170,13 +170,13 @@ async function extractAssignment(buffer, mimeType) {
     throw err
   }
 
-  // Step 1: Transcribe text from image using Gemini Vision (Raw OCR)
+  // Step 1: Transcribe text from image using OCR engine (Raw OCR)
   let rawText = ''
   try {
     const textRes = await aiService.extractTextFromImage(buffer, mimeType)
     rawText = textRes.rawText || ''
   } catch (err) {
-    const error = new Error('Gemini Vision text transcription failed: ' + err.message)
+    const error = new Error('OCR text transcription failed: ' + err.message)
     error.statusCode = 422
     throw error
   }
@@ -190,7 +190,7 @@ async function extractAssignment(buffer, mimeType) {
   // Step 2: Rule-Based Field Extraction
   const parsedFields = extractFieldsRegex(rawText)
 
-  // Step 3: AI Enrichment (Gemini processes suggestions, workload & handles fallbacks)
+  // Step 3: AI Enrichment (AI assistant processes suggestions, workload & handles fallbacks)
   let enriched = {}
   try {
     enriched = await aiService.enrichAssignmentWithAi(rawText, parsedFields)
