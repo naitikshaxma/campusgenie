@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Menu, Bell, Search } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, Bell, Search, LogOut } from 'lucide-react'
 import ThemeToggle from '@/components/common/ThemeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/useAuth'
@@ -15,8 +16,9 @@ const PAGE_TITLES = {
 }
 
 export default function Navbar({ onMenuClick }) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const location = useLocation()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const pageInfo = PAGE_TITLES[location.pathname] || { title: 'CampusGenie', subtitle: '' }
 
   const initials = user?.name
@@ -69,11 +71,48 @@ export default function Navbar({ onMenuClick }) {
         {/* Theme toggle */}
         <ThemeToggle />
 
-        {/* Avatar */}
-        <Avatar className="h-8 w-8 ring-2 ring-brand-500/30">
-          <AvatarImage src={user?.avatar} />
-          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-        </Avatar>
+        {/* Avatar Dropdown */}
+        <div className="relative">
+          <Avatar
+            onClick={() => setDropdownOpen((p) => !p)}
+            className="h-8 w-8 ring-2 ring-brand-500/30 cursor-pointer hover:ring-brand-500/60 active:scale-95 transition-all"
+          >
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback className="text-xs font-bold">{initials}</AvatarFallback>
+          </Avatar>
+          
+          <AnimatePresence>
+            {dropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setDropdownOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-48 rounded-xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-2xl p-1.5 z-40 text-left"
+                >
+                  <div className="px-2.5 py-2 border-b border-border/30">
+                    <p className="text-xs font-bold text-foreground truncate">{user?.name || 'Student'}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{user?.email || 'student@campus.edu'}</p>
+                  </div>
+                  <div className="p-1">
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false)
+                        logout()
+                      }}
+                      className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Logout
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   )

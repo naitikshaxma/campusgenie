@@ -65,10 +65,26 @@ export function AuthProvider({ children }) {
 
   /* ── Logout ── */
   const logout = useCallback(() => {
+    // Clear localStorage keys
     localStorage.removeItem('cg_token')
     localStorage.removeItem('cg_user')
+    localStorage.removeItem('cg_demo_mode')
+    localStorage.clear() // Clear all other key states to ensure complete reset
+
     setToken(null)
     setUser(null)
+
+    // Clear browser Cache Storage
+    if (window.caches) {
+      window.caches.keys().then((names) => {
+        names.forEach((name) => {
+          window.caches.delete(name)
+        })
+      }).catch(() => {})
+    }
+
+    // Redirect safely
+    window.location.href = '/login'
   }, [])
 
   const value = useMemo(

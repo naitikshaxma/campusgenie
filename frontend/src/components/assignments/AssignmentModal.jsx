@@ -19,19 +19,19 @@ const EMPTY = {
 }
 
 export default function AssignmentModal({ open, onOpenChange, onSave, initial }) {
-  const [form, setForm] = useState(initial || EMPTY)
+  const [form, setForm] = useState({ ...EMPTY, ...initial })
 
   // Synchronize modal state on initial change or open toggle
   useEffect(() => {
     if (open) {
-      setForm(initial || EMPTY)
+      setForm({ ...EMPTY, ...initial })
     }
   }, [open, initial])
 
   const handleChange = (field, value) => setForm((p) => ({ ...p, [field]: value }))
 
   const handleSave = () => {
-    if (!form.title.trim() || !form.dueDate) return
+    if (!form.title?.trim() || !form.dueDate) return
     onSave({ ...form, id: initial?.id || String(Date.now()) })
     setForm(EMPTY)
     onOpenChange(false)

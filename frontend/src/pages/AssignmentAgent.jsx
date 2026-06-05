@@ -186,8 +186,8 @@ export default function AssignmentAgent() {
                 <FileSearch className="h-4 w-4 text-brand-400" />
                 Upload homework source
               </h2>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Add an image notice or screenshot to let Gemini vision structure your assignments.
+              <p className="text-11px text-muted-foreground leading-relaxed">
+                Add an image notice or screenshot to let CampusGenie OCR scan and structure your assignments.
               </p>
             </div>
 
@@ -306,7 +306,7 @@ export default function AssignmentAgent() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-foreground">AI parsing in progress...</p>
-                  <p className="text-xs text-muted-foreground">Gemini vision is analyzing image worksheets & deadlines</p>
+                  <p className="text-xs text-muted-foreground">CampusGenie OCR is scanning image worksheets & deadlines</p>
                 </div>
               </motion.div>
             )}
@@ -347,7 +347,7 @@ export default function AssignmentAgent() {
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-destructive">Notice Parse Failed</h3>
                   <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                    Could not analyze the flyer screenshot or communicate with Gemini AI. Please check your file format and try again.
+                    Could not analyze the flyer screenshot or communicate with CampusGenie AI. Please check your file format and try again.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleReset} className="border-destructive/20 text-foreground">

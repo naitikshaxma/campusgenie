@@ -259,7 +259,7 @@ export default function NoticeScanner() {
             <div>
               <h3 className="text-sm font-semibold text-destructive">Notice Scan Failed</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto leading-relaxed">
-                Could not read the uploaded poster image or communicate with the Gemini AI service. Please check your network and image quality, then try again.
+                Could not read the uploaded poster image or communicate with the CampusGenie AI service. Please check your network and image quality, then try again.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={handleReset}>

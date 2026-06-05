@@ -292,7 +292,11 @@ export default function WeekView({ weekDates = [], sessions = [], onSlotClick, o
           .slice()
           .sort((a, b) => new Date(a.date) - new Date(b.date))
           .filter(
-            (s) => new Date(s.date) >= new Date(now.setHours(0, 0, 0, 0))
+            (s) => {
+              const todayStart = new Date(now)
+              todayStart.setHours(0, 0, 0, 0)
+              return new Date(s.date) >= todayStart
+            }
           )
           .map((session) => {
             const sd = new Date(session.date)

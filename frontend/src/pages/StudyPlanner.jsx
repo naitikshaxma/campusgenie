@@ -74,7 +74,8 @@ export default function StudyPlanner() {
     add,
     update,
     remove,
-    generatePlan
+    generatePlan,
+    refetch
   } = usePlanner()
 
   const { assignments } = useAssignments()
@@ -179,14 +180,10 @@ export default function StudyPlanner() {
     })
   }
 
-  const handleConstructSchedule = () => {
-    // Add staggered animation delay to the incoming sessions
-    const sessionsWithDelay = pendingAiSessions.map((s, idx) => ({
-      ...s,
-      animDelay: idx * 0.15
-    }))
-    setSessions(prev => [...prev, ...sessionsWithDelay])
+  const handleConstructSchedule = async () => {
+    await refetch()
     setPendingAiSessions([])
+    setReasoningModalOpen(false)
   }
 
   // Focus Timer Logic

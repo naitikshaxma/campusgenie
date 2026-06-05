@@ -1,4 +1,4 @@
-const geminiProvider = require('./ai/geminiProvider')
+const aiProvider = require('./ai/aiProvider')
 const Assignment = require('../models/Assignment')
 const PlannerSession = require('../models/PlannerSession')
 
@@ -98,7 +98,7 @@ ${existing.map(e => `- ${e.subject} on ${e.date?.toISOString().slice(0, 10)} fro
     }
 
     try {
-      const parsedOutput = await geminiProvider.generateJson(userPrompt, systemInstruction)
+      const parsedOutput = await aiProvider.generateCompletion(userPrompt, systemInstruction, true, 'planner')
       
       let parsedSessions = []
       let reasoning = "Your intelligent study plan has been generated based on current workload and peak focus availability."
