@@ -8,7 +8,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai')
 class GeminiProvider {
   constructor() {
     this.genAI = null
-    this.modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    this.modelName = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite'
   }
 
   /**
