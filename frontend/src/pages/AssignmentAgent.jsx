@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Camera, ArrowLeft, Brain, CheckCircle, AlertCircle, FileSearch, HelpCircle, FileText, ChevronRight } from 'lucide-react'
+import { Sparkles, Camera, ArrowLeft, Brain, CheckCircle, AlertCircle, FileSearch, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import UploadZone from '@/components/agent/UploadZone'
 import ExtractionResult from '@/components/agent/ExtractionResult'
@@ -9,19 +9,22 @@ import { extractAssignment } from '@/services/ocr.service'
 import { createAssignment } from '@/services/assignments.service'
 import { usePlanner } from '@/hooks/usePlanner'
 import { cn } from '@/lib/utils'
+
 const WORKFLOW_STEPS = [
   { label: 'Uploading image source', key: 'upload' },
-  { label: 'Extracting text (OCR)', key: 'ocr' },
-  { label: 'Structuring assignment', key: 'structure' },
-  { label: 'Saving to workspace', key: 'save' }
+  { label: 'Analyzing layout (Vision)', key: 'ocr' },
+  { label: 'Structuring assignment JSON', key: 'structure' },
+  { label: 'Saving to Kanban board', key: 'save' }
 ]
 
 export default function AssignmentAgent() {
   const navigate = useNavigate()
   const [file, setFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
   const [status, setStatus] = useState('idle') // 'idle' | 'processing' | 'success' | 'error'
   const [ocrStep, setOcrStep] = useState(0)
   const [extractedData, setExtractedData] = useState(null)
+  const [ocrError, setOcrError] = useState(null) // { category, detail }
   const [isCreating, setIsCreating] = useState(false)
   const [toasts, setToasts] = useState([])
 
@@ -35,50 +38,78 @@ export default function AssignmentAgent() {
     }, 3500)
   }
 
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
   const handleFileSelect = (selectedFile) => {
+    if (!selectedFile) return
     setFile(selectedFile)
+    
+    // Revoke old url if any
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+    setPreviewUrl(URL.createObjectURL(selectedFile))
     startOcrWorkflow(selectedFile)
   }
 
   const startOcrWorkflow = async (selectedFile) => {
     setStatus('processing')
     setOcrStep(0) // Stage 0: Uploading image
+    setOcrError(null)
 
     // Simulate progress transition from uploading to OCR scanning
-    const uploadTimeout = setTimeout(() => {
-      setOcrStep(1) // Stage 1: Extracting text (OCR)
-    }, 800)
+    const step1Timeout = setTimeout(() => {
+      setOcrStep(1) // Stage 1: Analyzing layout (Vision)
+    }, 700)
+
+    const step2Timeout = setTimeout(() => {
+      setOcrStep(2) // Stage 2: Structuring JSON
+    }, 1800)
 
     try {
       const res = await extractAssignment(selectedFile)
       
-      clearTimeout(uploadTimeout)
-      setOcrStep(2) // Stage 2: Structuring assignment
+      clearTimeout(step1Timeout)
+      clearTimeout(step2Timeout)
+      setOcrStep(2)
 
       // Defensive API checks
       if (!res || res.success === false) {
-        throw new Error(res?.message || 'OCR parsing failed.')
+        throw new Error(res?.message || 'Gemini Vision could not parse the document structure.')
       }
 
-      // Merge API response safely
-      const enrichedData = {
-        studySuggestions: 'Review key terms, complete basic exercises first, and budget focused 45-minute study intervals.',
-        ...res,
-      }
-
-      setExtractedData(enrichedData)
+      setExtractedData(res)
       setStatus('success')
-
-      // Surface field warnings in toast if any fields need review
-      if (res?.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
-        addToast('Some fields need manual review — see highlighted warnings.', 'warn')
-      } else {
-        addToast('Assignment structured successfully!')
-      }
+      addToast('Assignment structured successfully!')
     } catch (err) {
-      clearTimeout(uploadTimeout)
+      clearTimeout(step1Timeout)
+      clearTimeout(step2Timeout)
       setStatus('error')
-      addToast(err.message || 'OCR extraction failed. Try another image.', 'error')
+
+      const msg = err.message || ''
+      let category = 'Could not extract assignment'
+      let detail = msg || 'Verify that the document contains legible tasks and deadlines.'
+
+      if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('taking too long') || msg.includes('ECONNABORTED')) {
+        category = 'Gemini timeout'
+        detail = 'The request timed out. This may happen on Render backend cold starts or during peak Google API latency. Please try again.'
+      } else if (msg.includes('file type') || msg.includes('mimetype') || msg.includes('format') || msg.includes('type')) {
+        category = 'Unsupported image'
+        detail = 'Invalid file type. Only PNG, JPG, JPEG, and WebP images up to 5MB are supported by the Gemini Vision engine.'
+      } else if (msg.includes('upload') || msg.includes('network') || msg.includes('establish') || msg.includes('reach')) {
+        category = 'Upload failed'
+        detail = 'Could not upload the image to the server. Please check your internet connection and try again.'
+      }
+
+      setOcrError({ category, detail })
+      addToast(category, 'error')
       console.error('[AssignmentAgent] OCR extraction error:', err)
     }
   }
@@ -87,12 +118,15 @@ export default function AssignmentAgent() {
     setIsCreating(true)
     setOcrStep(3) // Stage 3: Saving to workspace
     try {
+      // Safe trim title checks
+      const finalTitle = (editedData?.title || '').trim() || 'Untitled Assignment'
       await createAssignment({
         ...editedData,
+        title: finalTitle,
         status: 'todo', // Default to todo column
         aiGenerated: true
       })
-      addToast('Assignment created on Kanban board!', 'success')
+      addToast('Assignment saved to Kanban board!', 'success')
       setTimeout(() => {
         navigate('/assignments')
       }, 1000)
@@ -109,11 +143,12 @@ export default function AssignmentAgent() {
     setIsCreating(true)
     setOcrStep(3) // Stage 3: Saving to workspace
     try {
+      const finalTitle = (editedData?.title || '').trim() || 'Untitled Assignment'
       await generatePlan({
-        assignmentTitle: editedData?.title,
-        subject: editedData?.subject,
+        assignmentTitle: finalTitle,
+        subject: editedData?.subject || 'CS',
         deadline: editedData?.dueDate,
-        difficulty: editedData?.priority,
+        difficulty: editedData?.priority || 'medium',
         availableHours: editedData?.estimatedStudyHours || editedData?.estimatedHours || 2
       })
       addToast('Study roadmap sessions built!', 'success')
@@ -130,10 +165,15 @@ export default function AssignmentAgent() {
   }
 
   const handleReset = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
     setFile(null)
+    setPreviewUrl(null)
     setStatus('idle')
     setOcrStep(0)
     setExtractedData(null)
+    setOcrError(null)
   }
 
   return (
@@ -168,12 +208,12 @@ export default function AssignmentAgent() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2 tracking-tight">
+          <h1 className="text-xl font-bold flex items-center gap-2 tracking-tight text-white">
             <Sparkles className="h-5 w-5 text-brand-400 fill-brand-400/10" />
             AI Assignment Scanner
           </h1>
           <p className="text-xs text-muted-foreground">
-            Convert assignment notice images, whiteboard snapshots, or class flyers into structured Kanban tasks instantly.
+            Convert assignment notice images, whiteboard snapshots, or class flyers into structured academic workflows instantly.
           </p>
         </div>
       </div>
@@ -191,21 +231,40 @@ export default function AssignmentAgent() {
                 <FileSearch className="h-4 w-4 text-brand-400" />
                 Upload homework source
               </h2>
-              <p className="text-11px text-muted-foreground leading-relaxed">
-                Add an image notice or screenshot to let CampusGenie OCR scan and structure your assignments.
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Add an image notice or take a photo to let Gemini Vision OCR structure your assignments.
               </p>
             </div>
 
             <UploadZone
               onFileSelect={handleFileSelect}
-              accept="image/jpeg,image/png,image/webp,application/pdf"
+              accept="image/jpeg,image/png,image/webp,image/jpg"
               disabled={status === 'processing'}
               status={status}
               label="Upload syllabus or assignment"
             />
 
+            {/* Mobile-first Quick Snap CTA */}
+            <div className="flex justify-center gap-3 pt-1">
+              <label className="w-full flex items-center justify-center gap-2 text-xs font-semibold px-4 py-3 rounded-xl border border-brand-500/20 bg-brand-500/5 hover:bg-brand-500/10 text-brand-300 cursor-pointer transition-all select-none active:scale-[0.98]">
+                <Camera className="h-4.5 w-4.5 text-brand-400" />
+                <span>Snap Homework Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0]
+                    if (selected) handleFileSelect(selected)
+                  }}
+                  disabled={status === 'processing'}
+                />
+              </label>
+            </div>
+
             <div className="pt-2 text-left space-y-1.5 border-t border-border/30 text-[10px] text-muted-foreground font-semibold">
-              <p className="uppercase tracking-wider">Supported format details:</p>
+              <p className="uppercase tracking-wider">Supported formats:</p>
               <ul className="list-disc list-inside space-y-0.5 text-muted-foreground/80 font-normal">
                 <li>Accepts PNG, JPG, JPEG, and WebP images</li>
                 <li>Size limit up to 5MB per upload</li>
@@ -226,7 +285,7 @@ export default function AssignmentAgent() {
                   'h-5 w-5 text-brand-400',
                   status === 'processing' && 'animate-pulse'
                 )} />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Cognitive workflow status</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Cognitive workflow status</h3>
               </div>
 
               <div className="space-y-2.5">
@@ -281,7 +340,7 @@ export default function AssignmentAgent() {
                 <div className="max-w-xs space-y-2">
                   <h3 className="text-sm font-bold text-foreground">Awaiting notice scan...</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Upload your class homework flyer. Once processed, the editable AI structured preview will display here in real-time.
+                    Upload your class homework snapshot. Once processed, the editable AI structured preview will display here in real-time.
                   </p>
                 </div>
               </motion.div>
@@ -293,25 +352,38 @@ export default function AssignmentAgent() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="rounded-2xl border border-border bg-card/45 backdrop-blur-md p-10 text-center min-h-[400px] flex flex-col items-center justify-center space-y-6"
+                className="rounded-2xl border border-border bg-[#080C18]/60 backdrop-blur-2xl p-8 text-center min-h-[400px] flex flex-col items-center justify-center space-y-6 relative overflow-hidden"
               >
-                <div className="relative flex items-center justify-center h-20 w-20">
-                  {/* Pulsing ring guides */}
-                  {[1, 2, 3].map((i) => (
+                {/* Visual scanner laser overlay */}
+                {previewUrl && (
+                  <div className="relative w-48 h-48 rounded-2xl border border-white/10 overflow-hidden shadow-2xl mx-auto">
+                    <img src={previewUrl} alt="Scanning preview" className="w-full h-full object-cover opacity-60" />
+                    
+                    {/* Laser line animation */}
                     <motion.div
-                      key={i}
-                      className="absolute inset-0 rounded-full border border-brand-500/30"
-                      animate={{ scale: [1, 1.4 + i * 0.15, 1], opacity: [0.6, 0, 0.6] }}
-                      transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4, ease: 'easeInOut' }}
+                      animate={{ top: ['0%', '98%', '0%'] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                      className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-400 to-transparent shadow-[0_0_12px_rgba(139,92,246,0.95)] z-10"
                     />
-                  ))}
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-cyan shadow-xl">
-                    <Brain className="h-6 w-6 text-white animate-pulse" />
+                  </div>
+                )}
+
+                <div className="relative flex items-center justify-center h-16 w-16 mx-auto">
+                  <div className="absolute inset-0 rounded-full border border-brand-500/20 animate-ping" />
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-400">
+                    <Brain className="h-5 w-5 animate-pulse" />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-foreground">AI parsing in progress...</p>
-                  <p className="text-xs text-muted-foreground">CampusGenie OCR is scanning image worksheets & deadlines</p>
+
+                <div className="space-y-2 max-w-xs mx-auto">
+                  <p className="text-sm font-bold text-white tracking-wide uppercase">
+                    {ocrStep === 0 ? 'Analyzing assignment...' :
+                     ocrStep === 1 ? 'Extracting deadlines...' :
+                     ocrStep === 2 ? 'Structuring tasks...' : 'AI scanning...'}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    CampusGenie Gemini 1.5 Flash is mapping tasks, workloads, and study plans from your image flyer.
+                  </p>
                 </div>
               </motion.div>
             )}
@@ -338,26 +410,35 @@ export default function AssignmentAgent() {
               </motion.div>
             )}
 
-            {status === 'error' && (
+            {status === 'error' && ocrError && (
               <motion.div
                 key="error-state"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="rounded-2xl border border-destructive/25 bg-destructive/10 p-8 text-center space-y-4"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="rounded-2xl border border-rose-500/20 bg-rose-950/10 backdrop-blur-xl p-8 text-center space-y-6 relative overflow-hidden"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/20 text-destructive mx-auto">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto">
                   <AlertCircle className="h-6 w-6" />
                 </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-destructive">Notice Parse Failed</h3>
-                  <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                    Could not analyze the flyer screenshot or communicate with CampusGenie AI. Please check your file format and try again.
+                
+                <div className="space-y-2 max-w-sm mx-auto">
+                  <h3 className="text-base font-bold text-white tracking-wide uppercase">{ocrError.category}</h3>
+                  <p className="text-xs text-rose-300/80 leading-relaxed">
+                    {ocrError.detail}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleReset} className="border-destructive/20 text-foreground">
-                  Try Again
-                </Button>
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-xs mx-auto">
+                  <Button variant="outline" size="sm" onClick={handleReset} className="border-rose-500/20 hover:bg-rose-500/10 text-rose-300">
+                    Try Again
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/assignments')} className="text-muted-foreground hover:text-white">
+                    Cancel
+                  </Button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

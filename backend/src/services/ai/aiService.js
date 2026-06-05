@@ -1,13 +1,10 @@
 const chatProvider = require('./chatProvider')
 const plannerProvider = require('./plannerProvider')
-const parserProvider = require('./parserProvider')
-const ocrProvider = require('./ocrProvider')
 
 /**
  * AI Service Orchestrator
- * High-level AI operations interface for controllers.
- * Enforces structured schema validation, error handling, and formatting fallbacks.
- * Uses new provider abstractions to support OpenRouter, Groq, Ollama, and OCR.space/Tesseract.
+ * High-level AI operations interface for Chat and Planner.
+ * Vision OCR tasks are now delegated directly to geminiVisionService.
  */
 class AiService {
   /**
@@ -19,34 +16,6 @@ class AiService {
     } catch (err) {
       console.error('[AiService] generateChatResponse error:', err.message)
       throw new Error('Could not generate AI chat response: ' + err.message)
-    }
-  }
-
-  /**
-   * Extracts assignment details from OCR scanned text.
-   */
-  async extractAssignmentData(text) {
-    try {
-      const data = await parserProvider.extractAssignmentData(text)
-      
-      // Validate schema compliance and provide defaults if missing
-      return {
-        title: data?.title || 'Untitled Assignment',
-        subject: data?.subject || 'General',
-        dueDate: this._isValidDate(data?.dueDate) 
-          ? data.dueDate 
-          : new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], // Default 7 days
-        priority: ['low', 'medium', 'high'].includes(String(data?.priority).toLowerCase())
-          ? String(data.priority).toLowerCase()
-          : 'medium',
-        description: data?.description || '',
-        estimatedStudyHours: Number(data?.estimatedStudyHours) || (data?.priority === 'high' ? 4.5 : data?.priority === 'medium' ? 2.5 : 1.0),
-        confidence: Number(data?.confidence) || 0.88,
-        aiGenerated: true
-      }
-    } catch (err) {
-      console.error('[AiService] extractAssignmentData error:', err.message)
-      throw new Error('Failed to extract assignment details: ' + err.message)
     }
   }
 
@@ -81,101 +50,6 @@ class AiService {
     } catch (err) {
       console.error('[AiService] generateStudyPlan error:', err.message)
       throw new Error('Failed to build AI study planner sessions: ' + err.message)
-    }
-  }
-
-  /**
-   * Extracts campus event flyer announcement details from text.
-   */
-  async extractNoticeData(text) {
-    try {
-      const data = await parserProvider.extractNoticeData(text)
-
-      return {
-        event: data?.event || 'Campus Event',
-        date: this._isValidDate(data?.date) 
-          ? data.date 
-          : new Date().toISOString().split('T')[0], // Default today
-        venue: data?.venue || 'Campus Main Grounds',
-        organizer: data?.organizer || 'Student Affairs',
-        description: data?.description || ''
-      }
-    } catch (err) {
-      console.error('[AiService] extractNoticeData error:', err.message)
-      throw new Error('Failed to parse campus notice flyer details: ' + err.message)
-    }
-  }
-
-  /**
-   * Extract assignment details directly from an image.
-   */
-  async extractAssignmentFromImage(buffer, mimeType) {
-    try {
-      console.log('[AiService] Running image-to-assignment OCR parser...')
-      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
-      const text = ocrResult?.rawText || ''
-      return await this.extractAssignmentData(text)
-    } catch (err) {
-      console.error('[AiService] extractAssignmentFromImage error:', err.message)
-      throw new Error('Failed to extract assignment from image: ' + err.message)
-    }
-  }
-
-  /**
-   * Extract campus notice event details directly from a flyer image.
-   */
-  async extractNoticeFromImage(buffer, mimeType) {
-    try {
-      console.log('[AiService] Running image-to-notice OCR parser...')
-      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
-      const text = ocrResult?.rawText || ''
-      return await this.extractNoticeData(text)
-    } catch (err) {
-      console.error('[AiService] extractNoticeFromImage error:', err.message)
-      throw new Error('Failed to extract notice details from flyer: ' + err.message)
-    }
-  }
-
-  /**
-   * AI Enrichment — called AFTER regex parsing.
-   */
-  async enrichAssignmentWithAi(rawText, parsedFields = {}) {
-    try {
-      const data = await parserProvider.enrichAssignmentWithAi(rawText, parsedFields)
-
-      return {
-        estimatedStudyHours: Number(data?.estimatedStudyHours) || 2.5,
-        studySuggestions: data?.studyRecommendation || data?.studySuggestions || 'Review class notes and practice past problems.',
-        difficulty: ['easy', 'medium', 'hard'].includes(String(data?.difficulty).toLowerCase())
-          ? String(data.difficulty).toLowerCase()
-          : 'medium',
-        summary: data?.summary || '',
-      }
-    } catch (err) {
-      console.warn('[AiService] AI enrichment failed, using fallbacks:', err.message)
-      return {
-        estimatedStudyHours: 2.5,
-        studySuggestions: 'Review textbook concepts and outline key goals before starting.',
-        difficulty: 'medium',
-        summary: '',
-      }
-    }
-  }
-
-  /**
-   * Transcribes all text from an image.
-   */
-  async extractTextFromImage(buffer, mimeType) {
-    try {
-      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
-      return { 
-        rawText: ocrResult?.rawText || '',
-        success: ocrResult?.success ?? true,
-        error: ocrResult?.error || null
-      }
-    } catch (err) {
-      console.error('[AiService] extractTextFromImage error:', err.message)
-      throw new Error('Failed to extract raw text from image: ' + err.message)
     }
   }
 

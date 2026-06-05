@@ -7,7 +7,7 @@ import api from './api'
 export const extractAssignment = (file) => {
   const formData = new FormData()
   formData.append('image', file)
-  return api.post('/ocr/assignment', formData, {
+  return api.post('/ocr/scan', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }

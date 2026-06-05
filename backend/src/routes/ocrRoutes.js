@@ -9,7 +9,7 @@ const router = express.Router()
 router.use(protect)
 
 // Accept multipart form data with single file upload field named 'image'
-router.post('/assignment', upload.single('image'), ocrController.extractAssignment)
+router.post('/scan', upload.single('image'), ocrController.extractAssignment)
 router.post('/notice', upload.single('image'), ocrController.extractNotice)
 router.post('/text', upload.single('image'), ocrController.extractText)
 
