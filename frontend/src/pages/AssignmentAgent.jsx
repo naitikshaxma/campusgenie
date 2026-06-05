@@ -82,7 +82,7 @@ export default function AssignmentAgent() {
 
       // Defensive API checks
       if (!res || res.success === false) {
-        throw new Error(res?.message || 'Gemini Vision could not parse the document structure.')
+        throw new Error(res?.error || res?.message || 'Gemini Vision could not parse the document structure.')
       }
 
       setExtractedData(res)

@@ -25,7 +25,7 @@ exports.extractAssignment = async (req, res) => {
     if (errorMsg) {
       return res.status(400).json({
         success: false,
-        message: errorMsg
+        error: errorMsg
       })
     }
 
@@ -33,7 +33,7 @@ exports.extractAssignment = async (req, res) => {
     if (!ocrResult.success) {
       return res.status(500).json({
         success: false,
-        message: ocrResult.error || 'Could not analyze assignment image'
+        error: 'Could not extract assignment'
       })
     }
 
@@ -46,7 +46,7 @@ exports.extractAssignment = async (req, res) => {
     console.error('[ocrController] extractAssignment error:', err)
     return res.status(500).json({
       success: false,
-      message: err.message || 'Server error occurred during OCR extraction.'
+      error: 'Could not extract assignment'
     })
   }
 }
@@ -57,7 +57,7 @@ exports.extractNotice = async (req, res) => {
     if (errorMsg) {
       return res.status(400).json({
         success: false,
-        message: errorMsg
+        error: errorMsg
       })
     }
 
@@ -65,7 +65,7 @@ exports.extractNotice = async (req, res) => {
     if (!ocrResult.success) {
       return res.status(500).json({
         success: false,
-        message: ocrResult.error || 'Could not analyze notice flyer image'
+        error: 'Could not extract assignment'
       })
     }
 
@@ -78,7 +78,7 @@ exports.extractNotice = async (req, res) => {
     console.error('[ocrController] extractNotice error:', err)
     return res.status(500).json({
       success: false,
-      message: err.message || 'Server error occurred during notice extraction.'
+      error: 'Could not extract assignment'
     })
   }
 }
@@ -89,7 +89,7 @@ exports.extractText = async (req, res) => {
     if (errorMsg) {
       return res.status(400).json({
         success: false,
-        message: errorMsg
+        error: errorMsg
       })
     }
 
@@ -97,7 +97,7 @@ exports.extractText = async (req, res) => {
     if (!ocrResult.success) {
       return res.status(500).json({
         success: false,
-        message: ocrResult.error || 'Could not analyze image text'
+        error: 'Could not extract assignment'
       })
     }
 
@@ -110,7 +110,7 @@ exports.extractText = async (req, res) => {
     console.error('[ocrController] extractText error:', err)
     return res.status(500).json({
       success: false,
-      message: err.message || 'Server error occurred during text extraction.'
+      error: 'Could not extract assignment'
     })
   }
 }

@@ -3,7 +3,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai')
 class GeminiVisionService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY
-    this.modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+    this.modelName = 'gemini-2.0-flash'
     this.genAI = null
     this.model = null
 
@@ -18,16 +18,18 @@ class GeminiVisionService {
    */
   initClient() {
     const key = process.env.GEMINI_API_KEY
-    if (key && (!this.genAI || this.apiKey !== key)) {
+    const modelEnv = 'gemini-2.0-flash'
+    if (key && (!this.genAI || this.apiKey !== key || this.modelName !== modelEnv)) {
       this.apiKey = key
+      this.modelName = modelEnv
       this.genAI = new GoogleGenerativeAI(key)
       this.model = this.genAI.getGenerativeModel({ model: this.modelName })
     }
   }
 
   /**
-   * Main scan entry point. 
-   * Transcribes and parses image buffers into structured JSON objects.
+   * Main scan entry point.
+   * Transcribes and parses image buffers into structured JSON objects using Gemini 2.0 Flash Vision.
    */
   async scanImage(buffer, mimeType, type = 'assignment') {
     this.initClient()
@@ -40,16 +42,20 @@ class GeminiVisionService {
       return { success: false, error: 'Empty file buffer uploaded.' }
     }
 
+    console.log('Gemini OCR started')
+    console.log('Model:', this.modelName)
+    console.log('MimeType:', mimeType)
+
     // Convert file buffer to base64 inline format
-    const base64Data = buffer.toString('base64')
+    const base64Image = buffer.toString('base64')
     const inlineImage = {
       inlineData: {
-        data: base64Data,
+        data: base64Image,
         mimeType: mimeType || 'image/png'
       }
     }
 
-    const prompt = this.getPrompt(type)
+    const promptText = this.getPromptText(type)
 
     // Execute with retries and timeout protection
     let attempts = 0
@@ -57,18 +63,27 @@ class GeminiVisionService {
     while (attempts < maxAttempts) {
       attempts++
       try {
-        console.log(`[GeminiVisionService] Calling Gemini Vision (${this.modelName}), Attempt ${attempts}/${maxAttempts}...`)
+        console.log(`[GeminiVisionService] Querying Gemini Vision (${this.modelName}), Attempt ${attempts}/${maxAttempts}...`)
         
         // Wrap Gemini execution in a 20s timeout promise
-        const apiPromise = this.model.generateContent([prompt, inlineImage])
+        const apiPromise = (async () => {
+          const result = await this.model.generateContent([
+            {
+              text: promptText
+            },
+            inlineImage
+          ])
+          const response = await result.response
+          return response.text()
+        })()
+
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Gemini Vision API execution timed out (20s).')), 20000)
         )
 
-        const result = await Promise.race([apiPromise, timeoutPromise])
-        const rawText = result.response?.text() || ''
-        
-        console.log('[GeminiVisionService] Raw response received, length:', rawText.length)
+        const rawText = await Promise.race([apiPromise, timeoutPromise])
+        console.log('Gemini raw response:', rawText)
+
         const parsed = this.safeParseGeminiJSON(rawText, type)
         
         return {
@@ -93,46 +108,61 @@ class GeminiVisionService {
   /**
    * Prompts demanding strict JSON outputs
    */
-  getPrompt(type) {
+  getPromptText(type) {
     if (type === 'notice') {
-      return `Analyze this notice board poster, bulletin flyer, or event announcement image carefully.
-Extract the relevant details and structure them into the JSON format requested below.
+      return `Analyze this notice board poster, flyer, or event announcement image carefully.
 
-If values are missing or unclear in the text, you must intelligently infer them (especially dates, which should match YYYY-MM-DD). If you cannot infer a value, use reasonable defaults.
+Extract:
 
-Return ONLY a valid JSON object matching the schema below.
-DO NOT wrap the JSON in markdown code blocks or formatting. Do NOT write "json" or backticks.
-Do NOT write explanations or any text other than the raw JSON.
+* event
+* venue
+* date
+* registrationDeadline
+* description
 
-JSON Schema:
+Return ONLY valid JSON.
+
+No markdown.
+No explanations.
+No code fences.
+
+Schema:
 {
-  "event": "Full clear name of the event",
-  "venue": "Where the event takes place",
-  "date": "YYYY-MM-DD",
-  "registrationDeadline": "YYYY-MM-DD",
-  "description": "Summary of event info, timings, organizers, and contact info"
+  "event": "",
+  "venue": "",
+  "date": "",
+  "registrationDeadline": "",
+  "description": ""
 }`
     }
 
-    return `Analyze this homework sheet, assignment description, or syllabus flyer image carefully.
-Extract the relevant details and structure them into the JSON format requested below.
+    return `Analyze this assignment image carefully.
 
-If values are missing or unclear in the text, you must intelligently infer them (especially subject name, and due date matching YYYY-MM-DD). If you cannot infer a value, use reasonable defaults.
+Extract:
 
-Return ONLY a valid JSON object matching the schema below.
-DO NOT wrap the JSON in markdown code blocks or formatting. Do NOT write "json" or backticks.
-Do NOT write explanations or any text other than the raw JSON.
+* title
+* subject
+* dueDate
+* description
+* priority
+* estimatedHours
+* tasks
 
-JSON Schema:
+Return ONLY valid JSON.
+
+No markdown.
+No explanations.
+No code fences.
+
+Schema:
 {
-  "title": "Clear assignment name (e.g. Chapter 4 Practice)",
-  "subject": "Academics subject name (e.g. CS, Mathematics)",
-  "dueDate": "YYYY-MM-DD",
-  "priority": "low | medium | high",
-  "description": "Full description of what needs to be done",
-  "estimatedHours": 2.5,
-  "tasks": ["Sub-task 1 to complete", "Sub-task 2 to complete"],
-  "studySuggestions": "Quick suggestions on how to study for or complete this assignment"
+  "title": "",
+  "subject": "",
+  "dueDate": "",
+  "description": "",
+  "priority": "medium",
+  "estimatedHours": 1,
+  "tasks": []
 }`
   }
 
@@ -196,7 +226,7 @@ JSON Schema:
       ? String(parsed.priority).toLowerCase()
       : 'medium'
 
-    const hours = Number(parsed?.estimatedHours || parsed?.estimatedStudyHours) || 2
+    const hours = Number(parsed?.estimatedHours || parsed?.estimatedStudyHours) || 1
 
     let desc = parsed?.description || rawText.slice(0, 500) || 'Scanned assignment document details.'
     const tasks = Array.isArray(parsed?.tasks) ? parsed.tasks.filter(Boolean) : []
@@ -248,8 +278,8 @@ JSON Schema:
       description: rawText ? rawText.slice(0, 500) : 'Scanned worksheet image.',
       dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
       priority: 'medium',
-      estimatedStudyHours: 2,
-      estimatedHours: 2,
+      estimatedStudyHours: 1,
+      estimatedHours: 1,
       tasks: [],
       studySuggestions: 'Focus on textbook concepts.',
       difficulty: 'medium',
