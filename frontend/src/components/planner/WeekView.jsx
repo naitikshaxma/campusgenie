@@ -282,23 +282,29 @@ export default function WeekView({ weekDates = [], sessions = [], onSlotClick, o
         </div>
       </div>
 
-      {/* ── MOBILE AGENDA VIEW ── */}
+            {/* ── MOBILE AGENDA VIEW ── */}
       <div className="md:hidden space-y-4 pb-20">
-        <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground px-1">Upcoming Agenda</h2>
+        <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground px-1">
+          Upcoming Agenda
+        </h2>
+
         {sessions
           .slice()
           .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .filter(s => new Date(s.date) >= new Date(now.setHours(0,0,0,0)))
+          .filter(
+            (s) => new Date(s.date) >= new Date(now.setHours(0, 0, 0, 0))
+          )
           .map((session) => {
             const sd = new Date(session.date)
             const isCompleted = session.status === 'completed'
+
             return (
-              <div 
+              <div
                 key={session.id || session._id}
                 onClick={() => onSessionClick?.(session)}
                 className={cn(
                   "flex items-center gap-4 p-4 rounded-2xl border backdrop-blur-md transition-all active:scale-[0.98]",
-                  isCompleted 
+                  isCompleted
                     ? "bg-secondary/20 border-border/40 opacity-70"
                     : "bg-card border-brand-500/20 shadow-md hover:border-brand-500/40"
                 )}
@@ -306,41 +312,85 @@ export default function WeekView({ weekDates = [], sessions = [], onSlotClick, o
                 {/* Time Indicator */}
                 <div className="flex flex-col items-center justify-center shrink-0 w-12 border-r border-border/40 pr-3">
                   <span className="text-xs font-bold text-foreground">
-                    {sd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).split(' ')[0]}
+                    {
+                      sd
+                        .toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })
+                        .split(' ')[0]
+                    }
                   </span>
+
                   <span className="text-[9px] font-black text-muted-foreground uppercase">
-                    {sd.toLocaleTimeString('en-US', { hour12: true }).split(' ')[1]}
+                    {
+                      sd
+                        .toLocaleTimeString('en-US', {
+                          hour12: true,
+                        })
+                        .split(' ')[1]
+                    }
                   </span>
                 </div>
-                
+
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 text-[10px] font-bold uppercase tracking-wider text-brand-400">
                     <span className="truncate">{session.subject}</span>
-                    <span className="text-muted-foreground">• {session.duration}h</span>
+
+                    <span className="text-muted-foreground">
+                      • {session.duration}h
+                    </span>
                   </div>
-                  <h3 className={cn("text-sm font-semibold truncate", isCompleted && "line-through text-muted-foreground")}>
+
+                  <h3
+                    className={cn(
+                      "text-sm font-semibold truncate",
+                      isCompleted && "line-through text-muted-foreground"
+                    )}
+                  >
                     {session.topic || session.note || 'Study Session'}
                   </h3>
                 </div>
 
-                {/* Status Toggle / Focus CTA */}
+                {/* Status Toggle */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    onUpdateSession?.(session.id || session._id, { status: isCompleted ? 'todo' : 'completed' })
+
+                    onUpdateSession?.(
+                      session.id || session._id,
+                      {
+                        status: isCompleted ? 'todo' : 'completed',
+                      }
+                    )
                   }}
                   className={cn(
                     "h-10 w-10 shrink-0 rounded-full flex items-center justify-center transition-all shadow-sm",
-                    isCompleted 
-                      ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30" 
+                    isCompleted
+                      ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
                       : "bg-secondary text-muted-foreground border border-border/50 hover:bg-brand-500/20 hover:text-brand-400"
                   )}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </button>
+              </div>
+            )
+          })}
+
         {sessions.length === 0 && (
           <div className="pt-4">
             <EmptyState
@@ -352,5 +402,6 @@ export default function WeekView({ weekDates = [], sessions = [], onSlotClick, o
           </div>
         )}
       </div>
+    </>
   )
 }

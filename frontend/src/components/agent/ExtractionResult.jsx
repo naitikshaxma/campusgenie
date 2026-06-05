@@ -329,7 +329,7 @@ export default function ExtractionResult({ data, onCreateAssignment, onGenerateP
             rows={3}
             className="flex w-full rounded-lg border border-border/60 bg-secondary/15 px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-brand-500 placeholder:text-muted-foreground resize-none"
           />
-        </div>
+        </motion.div>
 
         {/* AI Study Suggestions */}
         <div className="space-y-1.5 p-3.5 rounded-xl border border-brand-500/10 bg-brand-500/5 relative">
@@ -380,7 +380,7 @@ export default function ExtractionResult({ data, onCreateAssignment, onGenerateP
             </AnimatePresence>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* ── Actions ── */}
       <div className="flex flex-col gap-3 px-5 pb-5 border-t border-border/30 pt-4 bg-secondary/10">
