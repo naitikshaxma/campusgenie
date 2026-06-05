@@ -241,55 +241,61 @@ export default function Dashboard() {
   ], [stats])
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* ── Greeting ─────────────────────────────────────────── */}
+    <div className="space-y-4 md:space-y-6 pb-4">
+      {/* ── Mobile-first Greeting ─────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -12 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        transition={{ duration: 0.35 }}
+        className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-br from-brand-500/10 via-indigo-500/5 to-transparent p-4 md:p-6"
       >
-        <div>
-          <h2 className="font-display text-2xl font-black">
-            {greeting()}, <span className="gradient-text">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
-          </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {user?.major && `${user.major} · `}{user?.year || 'Welcome to CampusGenie'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <SyncIndicator status={syncStatus} lastSyncedAt={lastSyncedAt} />
-          <Link to="/chat">
-            <Button variant="gradient" className="group">
-              <Sparkles className="h-4 w-4" />
-              Ask AI
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Button>
-          </Link>
+        {/* Ambient glow */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground font-medium">{greeting()}</p>
+            <h1 className="font-display text-xl md:text-3xl font-black mt-0.5 truncate">
+              <span className="gradient-text">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              {user?.major ? `${user.major} · ` : ''}{user?.year || 'AI-powered student OS'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <SyncIndicator status={syncStatus} lastSyncedAt={lastSyncedAt} />
+            <Link to="/chat">
+              <Button variant="gradient" size="sm" className="group h-8 text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                Ask AI
+              </Button>
+            </Link>
+          </div>
         </div>
       </motion.div>
+
 
       {/* ── AI Companion ─────────────────────────────────────── */}
       <AiCompanion insights={aiTips.map(t => t.text)} />
 
       {/* ── Stat cards ───────────────────────────────────────── */}
       {statsLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
         </div>
       ) : (
-        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {STAT_CARDS.map(({ label, value, icon: Icon, color, bg, to }) => (
             <motion.div key={label} variants={item}>
               <Link to={to}>
-                <Card className="group relative overflow-hidden hover:border-brand-500/30 hover:shadow-lg hover:shadow-brand-500/5 transition-all duration-300 cursor-pointer">
-                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-60', bg)} />
-                  <CardContent className="relative p-5">
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-background/50 border border-white/10 mb-3', color)}>
-                      <Icon className="h-5 w-5" />
+                <Card className="group relative overflow-hidden hover:border-brand-500/30 transition-all duration-300 cursor-pointer active:scale-[0.97]">
+                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-50', bg)} />
+                  <CardContent className="relative p-3 md:p-5">
+                    <div className={cn('flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl bg-background/50 border border-white/10 mb-2 md:mb-3', color)}>
+                      <Icon className="h-4 w-4 md:h-5 md:w-5" />
                     </div>
-                    <p className="text-2xl font-display font-black">{value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                    <p className="text-xl md:text-2xl font-display font-black">{value}</p>
+                    <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5">{label}</p>
                   </CardContent>
                 </Card>
               </Link>

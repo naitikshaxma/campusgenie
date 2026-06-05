@@ -6,10 +6,12 @@ import MobileBottomNav from './MobileBottomNav'
 import AnimatedPage from '@/components/common/AnimatedPage'
 import MobileOnboarding from './MobileOnboarding'
 import FloatingAiAssistant from './FloatingAiAssistant'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     if (!localStorage.getItem('hasOnboarded')) {
@@ -18,13 +20,13 @@ export default function AppLayout() {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background relative">
+    <div className="flex h-full overflow-hidden bg-background relative">
       {/* Onboarding Overlay */}
       {showOnboarding && (
         <MobileOnboarding onComplete={() => setShowOnboarding(false)} />
       )}
 
-      {/* Sidebar (Desktop & Tablet) */}
+      {/* Sidebar (Desktop & Tablet only) */}
       <div className="hidden md:block">
         <Sidebar
           isOpen={sidebarOpen}
@@ -34,24 +36,30 @@ export default function AppLayout() {
 
       {/* Main content area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
+
+        {/* Desktop Top Navbar */}
         <div className="hidden md:block">
           <Navbar onMenuClick={() => setSidebarOpen(true)} />
         </div>
 
-        {/* Header on mobile (if we want a simple header, or just let pages handle it) */}
-        
-        <main className="flex-1 overflow-y-auto custom-scrollbar relative z-0">
-          {/* Add safe area bottom padding for mobile nav */}
-          <div className="h-full p-4 md:p-6 pb-28 md:pb-6 max-w-[1600px] mx-auto">
-            <AnimatedPage>
-              <Outlet />
-            </AnimatedPage>
+        {/* Scrollable page content */}
+        <main className="flex-1 overflow-y-auto mobile-scroll relative z-0">
+          <div className="h-full p-4 md:p-6 pb-nav md:pb-6 max-w-[1600px] mx-auto">
+            <ErrorBoundary key={location.pathname}>
+              <AnimatedPage>
+                <Outlet />
+              </AnimatedPage>
+            </ErrorBoundary>
           </div>
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation & Global AI Assistant */}
-      <FloatingAiAssistant />
+      {/* Floating AI — desktop only to avoid mobile overlaps */}
+      <div className="hidden md:block">
+        <FloatingAiAssistant />
+      </div>
+
+      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   )
