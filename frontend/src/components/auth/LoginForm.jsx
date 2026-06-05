@@ -11,7 +11,7 @@ export default function LoginForm() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({ email: 'alex@campus.edu', password: 'password123' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -103,26 +103,6 @@ export default function LoginForm() {
         ) : (
           <>Sign in <ArrowRight className="h-4 w-4" /></>
         )}
-      </Button>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-background px-3 text-muted-foreground">or try demo</span>
-        </div>
-      </div>
-
-      {/* Demo fill */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full text-sm"
-        onClick={() => setForm({ email: 'alex@campus.edu', password: 'password123' })}
-      >
-        Fill demo credentials
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">

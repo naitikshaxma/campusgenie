@@ -3,7 +3,6 @@ import {
   fetchSessions, createSession, updateSession,
   deleteSession, generateAiPlan, fetchStreakData,
 } from '@/services/planner.service'
-import { isDemoMode, DEMO_SESSIONS, DEMO_STUDENT } from '@/lib/demoData'
 
 export function usePlanner() {
   const [sessions,    setSessions]    = useState([])
@@ -14,15 +13,6 @@ export function usePlanner() {
 
   const load = useCallback(async () => {
     setIsLoading(true)
-
-    if (isDemoMode()) {
-      setTimeout(() => {
-        setSessions([...DEMO_SESSIONS])
-        setStreak(DEMO_STUDENT.streak)
-        setIsLoading(false)
-      }, 600)
-      return
-    }
 
     try {
       const [sessionsData, streakData] = await Promise.all([

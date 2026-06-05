@@ -9,8 +9,6 @@ import { extractAssignment } from '@/services/ocr.service'
 import { createAssignment } from '@/services/assignments.service'
 import { usePlanner } from '@/hooks/usePlanner'
 import { cn } from '@/lib/utils'
-import { isDemoMode } from '@/lib/demoData'
-
 const WORKFLOW_STEPS = [
   { label: 'Uploading image notice', key: 'upload' },
   { label: 'OCR scanning notice text', key: 'ocr' },
@@ -42,13 +40,8 @@ export default function AssignmentAgent() {
   }
 
   const handleFileSelect = (selectedFile) => {
-    // In demo mode, if we don't have a real file, just pass a dummy to trigger the flow
-    if (!selectedFile && isDemoMode()) {
-      setFile(new File([""], "demo-syllabus.jpg", { type: "image/jpeg" }))
-    } else {
-      setFile(selectedFile)
-    }
-    startOcrWorkflow(selectedFile || new File([""], "demo-syllabus.jpg", { type: "image/jpeg" }))
+    setFile(selectedFile)
+    startOcrWorkflow(selectedFile)
   }
 
   const startOcrWorkflow = async (selectedFile) => {
@@ -61,25 +54,7 @@ export default function AssignmentAgent() {
     }, 600)
 
     try {
-      let res;
-      if (isDemoMode()) {
-        await new Promise(resolve => setTimeout(resolve, 4000)); // Cinematic delay
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        
-        res = {
-          title: "Operating Systems Memory Management Project",
-          subject: "CS",
-          dueDate: tomorrow.toISOString(),
-          priority: "high",
-          estimatedStudyHours: 4,
-          description: "Implement paging and segmentation algorithms in C. Focus on LRU and FIFO page replacement.",
-          confidence: 96
-        };
-      } else {
-        res = await extractAssignment(selectedFile)
-      }
+      const res = await extractAssignment(selectedFile)
       
       clearInterval(stepInterval)
       setOcrStep(7)

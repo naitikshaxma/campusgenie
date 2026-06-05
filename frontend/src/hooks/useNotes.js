@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchNotes, createNote, updateNote, deleteNote } from '@/services/notes.service'
-import { isDemoMode, DEMO_NOTES } from '@/lib/demoData'
 
 export function useNotes(subjectFilter = 'All') {
   const [notes,     setNotes]     = useState([])
@@ -10,12 +9,6 @@ export function useNotes(subjectFilter = 'All') {
   const load = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-
-    if (isDemoMode()) {
-      setNotes([...DEMO_NOTES])
-      setIsLoading(false)
-      return
-    }
 
     try {
       const params = subjectFilter !== 'All' ? { subject: subjectFilter } : {}

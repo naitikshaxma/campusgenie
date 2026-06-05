@@ -6,7 +6,6 @@ import MobileBottomNav from './MobileBottomNav'
 import AnimatedPage from '@/components/common/AnimatedPage'
 import MobileOnboarding from './MobileOnboarding'
 import FloatingAiAssistant from './FloatingAiAssistant'
-import DemoLandingOverlay from '@/components/demo/DemoLandingOverlay'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -18,24 +17,12 @@ export default function AppLayout() {
     }
   }, [])
 
-  // Preload critical routes for demo performance
-  useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('CAMPUSGENIE_DEMO_MODE') === 'true') {
-      import('@/pages/AssignmentAgent');
-      import('@/pages/ContinueOnLaptop');
-      import('@/pages/StudyPlanner');
-      import('@/pages/Assignments');
-    }
-  }, []);
-
   return (
     <div className="flex h-screen overflow-hidden bg-background relative">
       {/* Onboarding Overlay */}
       {showOnboarding && (
         <MobileOnboarding onComplete={() => setShowOnboarding(false)} />
       )}
-
-      <DemoLandingOverlay />
 
       {/* Sidebar (Desktop & Tablet) */}
       <div className="hidden md:block">

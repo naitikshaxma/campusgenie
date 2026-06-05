@@ -6,7 +6,6 @@ import {
   deleteAssignment,
   moveAssignment,
 } from '@/services/assignments.service'
-import { isDemoMode, DEMO_ASSIGNMENTS } from '@/lib/demoData'
 
 /**
  * useAssignments — manages the full assignments state.
@@ -21,14 +20,6 @@ export function useAssignments() {
   const load = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    
-    if (isDemoMode()) {
-      setTimeout(() => {
-        setAssignments([...DEMO_ASSIGNMENTS])
-        setIsLoading(false)
-      }, 600) // slight delay to simulate load and allow cinematic intro
-      return
-    }
 
     try {
       const data = await fetchAssignments()
