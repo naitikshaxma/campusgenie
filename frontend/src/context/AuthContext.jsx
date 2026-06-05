@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import api from '@/services/api'
+import { isDemoMode, DEMO_STUDENT } from '@/lib/demoData'
 
 export const AuthContext = createContext(null)
 
@@ -10,6 +11,13 @@ export function AuthProvider({ children }) {
 
   /* ── Hydrate from localStorage and verify with Backend on mount ── */
   useEffect(() => {
+    if (isDemoMode()) {
+      setToken('demo-token-123')
+      setUser(DEMO_STUDENT)
+      setLoading(false)
+      return
+    }
+
     const storedToken = localStorage.getItem('cg_token')
     if (storedToken) {
       setToken(storedToken)
@@ -37,6 +45,14 @@ export function AuthProvider({ children }) {
 
   /* ── Login via REST API ── */
   const login = useCallback(async (email, password) => {
+    if (isDemoMode()) {
+      return new Promise(resolve => setTimeout(() => {
+        setToken('demo-token-123')
+        setUser(DEMO_STUDENT)
+        resolve(DEMO_STUDENT)
+      }, 800))
+    }
+
     const res = await api.post('/auth/login', { email, password })
     // res is unwrapped to data = { user, accessToken }
     const { user: loggedInUser, accessToken } = res
@@ -51,6 +67,14 @@ export function AuthProvider({ children }) {
 
   /* ── Signup via REST API ── */
   const signup = useCallback(async (signupData) => {
+    if (isDemoMode()) {
+      return new Promise(resolve => setTimeout(() => {
+        setToken('demo-token-123')
+        setUser(DEMO_STUDENT)
+        resolve(DEMO_STUDENT)
+      }, 800))
+    }
+
     const res = await api.post('/auth/signup', signupData)
     // res is unwrapped to data = { user, accessToken }
     const { user: registeredUser, accessToken } = res
