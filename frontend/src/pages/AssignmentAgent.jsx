@@ -10,14 +10,10 @@ import { createAssignment } from '@/services/assignments.service'
 import { usePlanner } from '@/hooks/usePlanner'
 import { cn } from '@/lib/utils'
 const WORKFLOW_STEPS = [
-  { label: 'Uploading image notice', key: 'upload' },
-  { label: 'OCR scanning notice text', key: 'ocr' },
-  { label: 'Detecting assignment title', key: 'title' },
-  { label: 'Parsing calendar due date', key: 'date' },
-  { label: 'Detecting course subject', key: 'subj' },
-  { label: 'Estimating workload hours', key: 'workload' },
-  { label: 'Generating study suggestions', key: 'suggestions' },
-  { label: 'Ready for review & save', key: 'ready' }
+  { label: 'Uploading image source', key: 'upload' },
+  { label: 'Extracting text (OCR)', key: 'ocr' },
+  { label: 'Structuring assignment', key: 'structure' },
+  { label: 'Saving to workspace', key: 'save' }
 ]
 
 export default function AssignmentAgent() {
@@ -46,20 +42,25 @@ export default function AssignmentAgent() {
 
   const startOcrWorkflow = async (selectedFile) => {
     setStatus('processing')
-    setOcrStep(0)
+    setOcrStep(0) // Stage 0: Uploading image
 
-    // Increment visual loading steps to simulate stages of AI parser
-    const stepInterval = setInterval(() => {
-      setOcrStep((prev) => (prev < 6 ? prev + 1 : prev))
-    }, 600)
+    // Simulate progress transition from uploading to OCR scanning
+    const uploadTimeout = setTimeout(() => {
+      setOcrStep(1) // Stage 1: Extracting text (OCR)
+    }, 800)
 
     try {
       const res = await extractAssignment(selectedFile)
       
-      clearInterval(stepInterval)
-      setOcrStep(7)
+      clearTimeout(uploadTimeout)
+      setOcrStep(2) // Stage 2: Structuring assignment
 
-      // Merge API response — preserve all confidence/fieldErrors/rawText fields
+      // Defensive API checks
+      if (!res || res.success === false) {
+        throw new Error(res?.message || 'OCR parsing failed.')
+      }
+
+      // Merge API response safely
       const enrichedData = {
         studySuggestions: 'Review key terms, complete basic exercises first, and budget focused 45-minute study intervals.',
         ...res,
@@ -69,21 +70,22 @@ export default function AssignmentAgent() {
       setStatus('success')
 
       // Surface field warnings in toast if any fields need review
-      if (res.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
+      if (res?.fieldErrors && Object.keys(res.fieldErrors).length > 0) {
         addToast('Some fields need manual review — see highlighted warnings.', 'warn')
       } else {
         addToast('Assignment structured successfully!')
       }
     } catch (err) {
-      clearInterval(stepInterval)
+      clearTimeout(uploadTimeout)
       setStatus('error')
-      addToast('OCR extraction failed. Try another image.', 'error')
+      addToast(err.message || 'OCR extraction failed. Try another image.', 'error')
       console.error('[AssignmentAgent] OCR extraction error:', err)
     }
   }
 
   const handleCreateAssignment = async (editedData) => {
     setIsCreating(true)
+    setOcrStep(3) // Stage 3: Saving to workspace
     try {
       await createAssignment({
         ...editedData,
@@ -97,6 +99,7 @@ export default function AssignmentAgent() {
     } catch (err) {
       console.error('[AssignmentAgent] Create assignment failed:', err)
       addToast('Failed to save assignment details.', 'error')
+      setOcrStep(2) // Revert back to structuring stage on error
     } finally {
       setIsCreating(false)
     }
@@ -104,13 +107,14 @@ export default function AssignmentAgent() {
 
   const handleGeneratePlan = async (editedData) => {
     setIsCreating(true)
+    setOcrStep(3) // Stage 3: Saving to workspace
     try {
       await generatePlan({
-        assignmentTitle: editedData.title,
-        subject: editedData.subject,
-        deadline: editedData.dueDate,
-        difficulty: editedData.priority,
-        availableHours: editedData.estimatedStudyHours || 2
+        assignmentTitle: editedData?.title,
+        subject: editedData?.subject,
+        deadline: editedData?.dueDate,
+        difficulty: editedData?.priority,
+        availableHours: editedData?.estimatedStudyHours || editedData?.estimatedHours || 2
       })
       addToast('Study roadmap sessions built!', 'success')
       setTimeout(() => {
@@ -119,6 +123,7 @@ export default function AssignmentAgent() {
     } catch (err) {
       console.error('[AssignmentAgent] Study plan generation failed:', err)
       addToast('Failed to build study planner sessions.', 'error')
+      setOcrStep(2) // Revert back to structuring stage on error
     } finally {
       setIsCreating(false)
     }

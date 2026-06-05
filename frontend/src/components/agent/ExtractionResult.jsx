@@ -94,13 +94,14 @@ export default function ExtractionResult({ data, onCreateAssignment, onGenerateP
   }, [data])
 
   function buildDefaults(d = {}) {
+    const hours = d?.estimatedStudyHours ?? d?.estimatedHours ?? 2.5
     return {
       title:               '',
       subject:             'Computer Science',
       description:         '',
       dueDate:             '',
       priority:            'medium',
-      estimatedStudyHours: 2.5,
+      estimatedStudyHours: hours,
       confidence:          0.88,
       studySuggestions:    'Review class notes and practice past problems.',
       ...d,

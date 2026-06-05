@@ -112,8 +112,9 @@ class AiService {
   async extractAssignmentFromImage(buffer, mimeType) {
     try {
       console.log('[AiService] Running image-to-assignment OCR parser...')
-      const rawText = await ocrProvider.extractText(buffer, mimeType)
-      return await this.extractAssignmentData(rawText)
+      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
+      const text = ocrResult?.rawText || ''
+      return await this.extractAssignmentData(text)
     } catch (err) {
       console.error('[AiService] extractAssignmentFromImage error:', err.message)
       throw new Error('Failed to extract assignment from image: ' + err.message)
@@ -126,8 +127,9 @@ class AiService {
   async extractNoticeFromImage(buffer, mimeType) {
     try {
       console.log('[AiService] Running image-to-notice OCR parser...')
-      const rawText = await ocrProvider.extractText(buffer, mimeType)
-      return await this.extractNoticeData(rawText)
+      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
+      const text = ocrResult?.rawText || ''
+      return await this.extractNoticeData(text)
     } catch (err) {
       console.error('[AiService] extractNoticeFromImage error:', err.message)
       throw new Error('Failed to extract notice details from flyer: ' + err.message)
@@ -165,8 +167,12 @@ class AiService {
    */
   async extractTextFromImage(buffer, mimeType) {
     try {
-      const rawText = await ocrProvider.extractText(buffer, mimeType)
-      return { rawText }
+      const ocrResult = await ocrProvider.extractText(buffer, mimeType)
+      return { 
+        rawText: ocrResult?.rawText || '',
+        success: ocrResult?.success ?? true,
+        error: ocrResult?.error || null
+      }
     } catch (err) {
       console.error('[AiService] extractTextFromImage error:', err.message)
       throw new Error('Failed to extract raw text from image: ' + err.message)

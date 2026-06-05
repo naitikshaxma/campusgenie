@@ -18,5 +18,7 @@ services:
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OCR_SPACE_API_KEY
         sync: false

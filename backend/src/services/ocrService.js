@@ -182,9 +182,8 @@ async function extractAssignment(buffer, mimeType) {
   }
 
   if (!rawText.trim()) {
-    const err = new Error('Unreadable image notice board: OCR transcribed text was empty.')
-    err.statusCode = 422
-    throw err
+    console.warn('[ocrService] OCR text transcription was empty. Proceeding with fallback details.');
+    rawText = 'Unreadable scanned notice board worksheet.';
   }
 
   // Step 2: Rule-Based Field Extraction

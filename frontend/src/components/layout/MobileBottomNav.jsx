@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LayoutDashboard, CheckSquare, Camera, CalendarDays, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import { useState, useEffect } from 'react'
+
 const TABS = [
   { name: 'Home',   path: '/dashboard',   icon: LayoutDashboard },
   { name: 'Tasks',  path: '/assignments',  icon: CheckSquare },
@@ -13,6 +15,38 @@ const TABS = [
 
 export default function MobileBottomNav() {
   const location = useLocation()
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+
+  useEffect(() => {
+    const handleFocus = (e) => {
+      const tagName = e.target?.tagName?.toLowerCase()
+      if (tagName === 'input' || tagName === 'textarea') {
+        setIsKeyboardVisible(true)
+      }
+    }
+    
+    const handleBlur = (e) => {
+      const tagName = e.target?.tagName?.toLowerCase()
+      if (tagName === 'input' || tagName === 'textarea') {
+        setTimeout(() => {
+          const activeTag = document.activeElement?.tagName?.toLowerCase()
+          if (activeTag !== 'input' && activeTag !== 'textarea') {
+            setIsKeyboardVisible(false)
+          }
+        }, 100)
+      }
+    }
+
+    document.addEventListener('focusin', handleFocus)
+    document.addEventListener('focusout', handleBlur)
+
+    return () => {
+      document.removeEventListener('focusin', handleFocus)
+      document.removeEventListener('focusout', handleBlur)
+    }
+  }, [])
+
+  if (isKeyboardVisible) return null
 
   return (
     <nav

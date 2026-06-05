@@ -19,23 +19,55 @@ const EMPTY = {
 }
 
 export default function AssignmentModal({ open, onOpenChange, onSave, initial }) {
-  const [form, setForm] = useState({ ...EMPTY, ...initial })
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    subject: 'CS',
+    priority: 'medium',
+    dueDate: '',
+    status: 'todo',
+    ...initial
+  })
 
   // Synchronize modal state on initial change or open toggle
   useEffect(() => {
     if (open) {
-      setForm({ ...EMPTY, ...initial })
+      // Normalize date format if it contains time information
+      let normalizedDate = initial?.dueDate || ''
+      if (normalizedDate && normalizedDate.includes('T')) {
+        normalizedDate = normalizedDate.split('T')[0]
+      }
+
+      setForm({
+        title: '',
+        description: '',
+        subject: 'CS',
+        priority: 'medium',
+        status: 'todo',
+        ...initial,
+        dueDate: normalizedDate
+      })
     }
   }, [open, initial])
 
-  const handleChange = (field, value) => setForm((p) => ({ ...p, [field]: value }))
+  const handleChange = (field, value) => setForm((p) => ({ ...p, [field]: value || '' }))
 
   const handleSave = () => {
-    if (!form.title?.trim() || !form.dueDate) return
-    onSave({ ...form, id: initial?.id || String(Date.now()) })
-    setForm(EMPTY)
+    const trimmedTitle = (form?.title || '').trim()
+    if (!trimmedTitle || !form?.dueDate) return
+    onSave({ ...form, title: trimmedTitle, id: initial?.id || String(Date.now()) })
+    setForm({
+      title: '',
+      description: '',
+      subject: 'CS',
+      priority: 'medium',
+      dueDate: '',
+      status: 'todo'
+    })
     onOpenChange(false)
   }
+
+  const isSaveDisabled = !(form?.title || '').trim() || !form?.dueDate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,7 +83,11 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
           {/* Title */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Title *</label>
-            <Input placeholder="e.g. Chapter 5 Problem Set" value={form.title} onChange={(e) => handleChange('title', e.target.value)} />
+            <Input 
+              placeholder="e.g. Chapter 5 Problem Set" 
+              value={form?.title || ''} 
+              onChange={(e) => handleChange('title', e.target.value)} 
+            />
           </div>
 
           {/* Description */}
@@ -60,7 +96,7 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
             <textarea
               className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors min-h-[80px]"
               placeholder="Optional details…"
-              value={form.description}
+              value={form?.description || ''}
               onChange={(e) => handleChange('description', e.target.value)}
             />
           </div>
@@ -72,8 +108,8 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
                 <BookOpen className="h-3 w-3" /> Subject
               </label>
               <select
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={form.subject}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring animate-none"
+                value={form?.subject || 'CS'}
                 onChange={(e) => handleChange('subject', e.target.value)}
               >
                 {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -87,10 +123,11 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
                 {PRIORITIES.map((p) => (
                   <button
                     key={p}
+                    type="button"
                     onClick={() => handleChange('priority', p)}
                     className={cn(
                       'flex-1 text-xs py-2 rounded-lg border capitalize transition-all',
-                      form.priority === p
+                      form?.priority === p
                         ? p === 'high'   ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
                           : p === 'medium' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
                           : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
@@ -110,13 +147,17 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" /> Due date *
               </label>
-              <Input type="date" value={form.dueDate} onChange={(e) => handleChange('dueDate', e.target.value)} />
+              <Input 
+                type="date" 
+                value={form?.dueDate || ''} 
+                onChange={(e) => handleChange('dueDate', e.target.value)} 
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <select
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={form.status}
+                value={form?.status || 'todo'}
                 onChange={(e) => handleChange('status', e.target.value)}
               >
                 {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
@@ -127,7 +168,7 @@ export default function AssignmentModal({ open, onOpenChange, onSave, initial })
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="gradient" onClick={handleSave} disabled={!form.title.trim() || !form.dueDate}>
+          <Button variant="gradient" onClick={handleSave} disabled={isSaveDisabled}>
             {initial ? 'Update' : 'Add Assignment'}
           </Button>
         </DialogFooter>
