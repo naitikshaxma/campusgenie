@@ -25,16 +25,32 @@ app.use(compression())
 app.use(morgan('dev'))
 
 // ── CORS Safety Enforcement ──
-const corsOrigin = process.env.CORS_ORIGIN
-if (process.env.NODE_ENV === 'production') {
-  if (!corsOrigin) {
-    throw new Error('CORS_ORIGIN environment variable is required in production.')
-  }
+const buildAllowedOrigins = () => {
+  const raw = process.env.CORS_ORIGIN || 'http://localhost:5173'
+  // Support comma-separated list of allowed origins
+  return raw.split(',').map((o) => o.trim().replace(/\/$/, ''))
 }
+const allowedOrigins = buildAllowedOrigins()
+console.log('[CORS] Allowed origins:', allowedOrigins)
+
 app.use(cors({
-  origin: corsOrigin || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Render health checks, etc.)
+    if (!origin) return callback(null, true)
+    const normalized = origin.replace(/\/$/, '')
+    if (allowedOrigins.includes(normalized)) {
+      return callback(null, true)
+    }
+    console.warn('[CORS] Blocked origin:', origin)
+    return callback(new Error(`CORS: Origin '${origin}' not allowed.`))
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }))
+
+// Handle CORS preflight for all routes
+app.options('*', cors())
 
 app.use(express.json({ limit: '2mb' }))
 
@@ -55,6 +71,15 @@ const chatLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 mins
   max: 50, // Limit AI questions to 50 per IP
   message: { success: false, message: 'Too many AI questions. Please wait a few minutes before asking again.' }
+})
+
+// ── Root Endpoint (Render health pings) ──
+app.get('/', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'CampusGenie API Running',
+    version: '1.0.0'
+  })
 })
 
 // ── Health Endpoint ──
