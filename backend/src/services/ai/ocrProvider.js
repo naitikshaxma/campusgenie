@@ -45,8 +45,9 @@ class OcrProvider {
     const apiKey = process.env.OCR_SPACE_API_KEY || 'helloworld'
     
     // Construct base64 payload
+    const activeMime = mimeType || 'image/png'
     const base64Str = buffer.toString('base64')
-    const dataUri = `data:${mimeType};base64,${base64Str}`
+    const dataUri = `data:${activeMime};base64,${base64Str}`
     
     const formData = new URLSearchParams()
     formData.append('apikey', apiKey)
@@ -95,25 +96,38 @@ class OcrProvider {
    * Tesseract.js local client
    */
   async callTesseract(buffer) {
-    // Wrap Tesseract.recognize in a timeout of 15 seconds
-    const ocrPromise = Tesseract.recognize(
-      buffer,
-      'eng',
-      {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            console.log(`[Tesseract] Progress: ${Math.round(m.progress * 100)}%`)
-          }
+    const path = require('path')
+    const langPath = path.resolve(__dirname, '../../..')
+    
+    // Create the worker with offline options pointing to local eng.traineddata
+    const worker = await Tesseract.createWorker('eng', 1, {
+      langPath,
+      gzip: false,
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          console.log(`[Tesseract] Progress: ${Math.round(m.progress * 100)}%`)
         }
       }
-    )
+    })
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Tesseract local execution timed out (15s)')), 15000)
-    )
+    try {
+      // Wrap the recognition in a timeout of 20 seconds
+      const ocrPromise = (async () => {
+        const { data: { text } } = await worker.recognize(buffer)
+        return text || ''
+      })()
 
-    const result = await Promise.race([ocrPromise, timeoutPromise])
-    return result?.data?.text || ''
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Tesseract local execution timed out (20s)')), 20000)
+      )
+
+      const result = await Promise.race([ocrPromise, timeoutPromise])
+      await worker.terminate()
+      return result
+    } catch (err) {
+      await worker.terminate().catch(() => {})
+      throw err
+    }
   }
 }
 
